@@ -15,6 +15,7 @@ let audio;
 let starting = false;
 let generation = 0;
 let nextAudioTime = 0;
+let uploadRequest = 0;
 const activeNodes = new Set();
 const $ = (id) => document.getElementById(id);
 const feedback = $('feedback');
@@ -36,7 +37,7 @@ function focusCell(row, column, moveFocus) {
 }
 const patternTools = document.createElement('div');
 patternTools.className = 'pattern-tools';
-patternTools.innerHTML = '<textarea id="pattern-json" aria-label="Pattern JSON" rows="3" placeholder="Pattern JSON lives here"></textarea><button id="export" class="transport">Export JSON</button><button id="import" class="transport">Import JSON</button><button id="undo" class="transport" disabled>Undo</button><button id="redo" class="transport" disabled>Redo</button><div class="euclidean-tools"><label for="euclidean-voice">EUCLIDEAN</label><select id="euclidean-voice" aria-label="Euclidean voice"><option value="kick">Kick</option><option value="snare">Snare</option><option value="hat">Hat</option></select><label for="euclidean-pulses">PULSES</label><input id="euclidean-pulses" type="number" min="0" max="16" value="3" required aria-label="Euclidean pulses"><label for="euclidean-rotation">ROTATION</label><input id="euclidean-rotation" type="number" min="0" max="15" value="0" required aria-label="Euclidean rotation"><button id="euclidean-generate" class="transport">Generate</button></div><div class="save-tools"><label for="save-name">SAVE NAME</label><input id="save-name" maxlength="40" placeholder="e.g. Tuesday kitchen" aria-label="Save name"><button id="save" class="transport">Save</button><select id="save-slot" aria-label="Saved pattern"><option value="">Choose saved pattern…</option></select><button id="load" class="transport">Load</button><button id="delete-save" class="transport">Delete</button></div>';
+patternTools.innerHTML = '<textarea id="pattern-json" aria-label="Pattern JSON" rows="3" placeholder="Pattern JSON lives here"></textarea><button id="export" class="transport">Export JSON</button><button id="import" class="transport">Import JSON</button><button id="download" class="transport">Download JSON</button><label class="file-upload" for="upload"><span>Upload JSON</span><input id="upload" type="file" accept="application/json,.json" aria-label="Upload pattern JSON"></label><button id="undo" class="transport" disabled>Undo</button><button id="redo" class="transport" disabled>Redo</button><div class="euclidean-tools"><label for="euclidean-voice">EUCLIDEAN</label><select id="euclidean-voice" aria-label="Euclidean voice"><option value="kick">Kick</option><option value="snare">Snare</option><option value="hat">Hat</option></select><label for="euclidean-pulses">PULSES</label><input id="euclidean-pulses" type="number" min="0" max="16" value="3" required aria-label="Euclidean pulses"><label for="euclidean-rotation">ROTATION</label><input id="euclidean-rotation" type="number" min="0" max="15" value="0" required aria-label="Euclidean rotation"><button id="euclidean-generate" class="transport">Generate</button></div><div class="save-tools"><label for="save-name">SAVE NAME</label><input id="save-name" maxlength="40" placeholder="e.g. Tuesday kitchen" aria-label="Save name"><button id="save" class="transport">Save</button><select id="save-slot" aria-label="Saved pattern"><option value="">Choose saved pattern…</option></select><button id="load" class="transport">Load</button><button id="delete-save" class="transport">Delete</button></div>';
 feedback.parentElement.insertBefore(patternTools, feedback);
 const copyTools = document.createElement('div');
 copyTools.className = 'copy-tools';
@@ -261,6 +262,26 @@ $('import').addEventListener('click', () => { try {
 }
 catch (error) {
     feedback.textContent = `Import failed: ${error.message}`;
+} });
+$('download').addEventListener('click', () => { const blob = new Blob([BalconyBand.exportPattern(song, tempo)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = 'balcony-band-pattern.json'; link.click(); URL.revokeObjectURL(url); feedback.textContent = 'Pattern downloaded. The balcony has produced paperwork.'; });
+$('upload').addEventListener('change', async (event) => { var _a; const input = event.target; const request = ++uploadRequest; const file = (_a = input.files) === null || _a === void 0 ? void 0 : _a[0]; if (!file)
+    return; try {
+    if (file.size > 65536)
+        throw new RangeError('pattern file is limited to 64 KiB');
+    const raw = await file.text();
+    if (request !== uploadRequest)
+        return;
+    const loaded = BalconyBand.importPattern(raw);
+    changePattern(loaded.song, loaded.tempo);
+    feedback.textContent = 'Pattern uploaded. Press start when ready.';
+}
+catch (error) {
+    if (request === uploadRequest)
+        feedback.textContent = `Upload failed: ${error.message}`;
+}
+finally {
+    if (request === uploadRequest)
+        input.value = '';
 } });
 $('tempo').addEventListener('input', (event) => { tempo = BalconyBand.validateTempo(Number(event.target.value)); editHistoryState = Object.assign(Object.assign({}, editHistoryState), { present: Object.assign(Object.assign({}, editHistoryState.present), { tempo }) }); draw(); });
 $('swing').addEventListener('input', (event) => { swing = BalconyBand.validateSwing(Number(event.target.value)); feedback.textContent = `Swing ${swing}%.`; draw(); });
