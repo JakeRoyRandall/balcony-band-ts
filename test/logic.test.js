@@ -1,0 +1,10 @@
+const assert = require('assert');
+const band = require('../app/generated/logic.js');
+const song = band.emptySong();
+assert.equal(song.kick.length, 8);
+const toggled = band.toggle(song, 'kick', 3);
+assert.equal(toggled.kick[3], true); assert.equal(song.kick[3], false);
+assert.equal(band.stepMs(120), 250);
+assert.throws(() => band.validateTempo(59), /60..180/);
+assert.throws(() => band.toggle(song, 'hat', 8), /0..7/);
+console.log('pattern logic checks passed');
