@@ -11,6 +11,7 @@ let nextAudioTime = 0;
 const activeNodes = new Set<AudioScheduledSourceNode>();
 const $ = (id: string) => document.getElementById(id)!;
 const feedback = $('feedback');
+function changePattern(next: BalconyBand.Song, nextTempo?: number): void { if (running || starting) stop(); Object.assign(song, BalconyBand.cloneSong(next)); if (nextTempo !== undefined) { tempo = BalconyBand.validateTempo(nextTempo); ($('tempo') as HTMLInputElement).value = String(tempo); } feedback.textContent = 'Pattern loaded. Press start when ready.'; draw(); }
 function draw(): void {
   $('tempo-value').textContent = `${tempo} BPM`;
   $('transport').textContent = running ? 'Stop groove' : 'Start groove';
@@ -35,5 +36,7 @@ async function start(): Promise<void> { if (running || starting) return; startin
 function stop(): void { starting = false; generation++; running = false; if (timer !== undefined) window.clearTimeout(timer); timer = undefined; activeNodes.forEach((node) => { try { node.stop(); } catch (_error) { /* already ended */ } }); activeNodes.clear(); if (audio) void audio.suspend(); feedback.textContent = 'Paused. The upstairs neighbour approves.'; draw(); }
 document.querySelectorAll<HTMLButtonElement>('[data-voice][data-step]').forEach((button) => button.addEventListener('click', () => { const voice = button.dataset.voice as keyof BalconyBand.Song; song[voice] = BalconyBand.toggle(song, voice, Number(button.dataset.step))[voice]; draw(); }));
 $('transport').addEventListener('click', () => { if (running || starting) stop(); else void start(); });
+$('preset').addEventListener('change', (event) => { const name = (event.target as HTMLSelectElement).value; if (name) { const selected = BalconyBand.preset(name); changePattern(selected.song, selected.tempo); (event.target as HTMLSelectElement).value = ''; } });
+$('clear').addEventListener('click', () => changePattern(BalconyBand.clearSong()));
 $('tempo').addEventListener('input', (event) => { tempo = BalconyBand.validateTempo(Number((event.target as HTMLInputElement).value)); draw(); });
 draw();

@@ -12,6 +12,11 @@ let nextAudioTime = 0;
 const activeNodes = new Set();
 const $ = (id) => document.getElementById(id);
 const feedback = $('feedback');
+function changePattern(next, nextTempo) { if (running || starting)
+    stop(); Object.assign(song, BalconyBand.cloneSong(next)); if (nextTempo !== undefined) {
+    tempo = BalconyBand.validateTempo(nextTempo);
+    $('tempo').value = String(tempo);
+} feedback.textContent = 'Pattern loaded. Press start when ready.'; draw(); }
 function draw() {
     $('tempo-value').textContent = `${tempo} BPM`;
     $('transport').textContent = running ? 'Stop groove' : 'Start groove';
@@ -100,5 +105,11 @@ $('transport').addEventListener('click', () => { if (running || starting)
     stop();
 else
     void start(); });
+$('preset').addEventListener('change', (event) => { const name = event.target.value; if (name) {
+    const selected = BalconyBand.preset(name);
+    changePattern(selected.song, selected.tempo);
+    event.target.value = '';
+} });
+$('clear').addEventListener('click', () => changePattern(BalconyBand.clearSong()));
 $('tempo').addEventListener('input', (event) => { tempo = BalconyBand.validateTempo(Number(event.target.value)); draw(); });
 draw();
