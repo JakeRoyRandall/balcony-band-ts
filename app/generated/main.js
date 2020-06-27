@@ -12,6 +12,10 @@ let nextAudioTime = 0;
 const activeNodes = new Set();
 const $ = (id) => document.getElementById(id);
 const feedback = $('feedback');
+const patternTools = document.createElement('div');
+patternTools.className = 'pattern-tools';
+patternTools.innerHTML = '<textarea id="pattern-json" aria-label="Pattern JSON" rows="3" placeholder="Pattern JSON lives here"></textarea><button id="export" class="transport">Export JSON</button><button id="import" class="transport">Import JSON</button>';
+feedback.parentElement.insertBefore(patternTools, feedback);
 function changePattern(next, nextTempo) { if (running || starting)
     stop(); Object.assign(song, BalconyBand.cloneSong(next)); if (nextTempo !== undefined) {
     tempo = BalconyBand.validateTempo(nextTempo);
@@ -111,5 +115,14 @@ $('preset').addEventListener('change', (event) => { const name = event.target.va
     event.target.value = '';
 } });
 $('clear').addEventListener('click', () => changePattern(BalconyBand.clearSong()));
+$('export').addEventListener('click', () => { $('pattern-json').value = BalconyBand.exportPattern(song, tempo); feedback.textContent = 'Pattern exported to the box below.'; });
+$('import').addEventListener('click', () => { try {
+    const loaded = BalconyBand.importPattern($('pattern-json').value);
+    changePattern(loaded.song, loaded.tempo);
+    feedback.textContent = 'Pattern imported. Press start when ready.';
+}
+catch (error) {
+    feedback.textContent = `Import failed: ${error.message}`;
+} });
 $('tempo').addEventListener('input', (event) => { tempo = BalconyBand.validateTempo(Number(event.target.value)); draw(); });
 draw();
