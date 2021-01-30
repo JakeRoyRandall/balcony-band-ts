@@ -1,6 +1,12 @@
 const assert = require('assert');
 const band = require('../app/generated/logic.js');
 const song = band.emptySong();
+const mutes = band.emptyMutes();
+assert.equal(band.voiceAudible(mutes, 'kick'), true);
+const mutedKick = band.toggleMute(mutes, 'kick');
+assert.equal(band.voiceAudible(mutedKick, 'kick'), false);
+assert.equal(band.voiceAudible(mutedKick, 'snare'), true);
+assert.equal(band.voiceAudible(mutes, 'kick'), true);
 assert.equal(song.kick.length, 16);
 const toggled = band.toggle(song, 'kick', 3);
 assert.equal(toggled.kick[3], true); assert.equal(song.kick[3], false);

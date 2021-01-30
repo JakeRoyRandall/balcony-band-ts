@@ -1,8 +1,12 @@
 namespace BalconyBand {
   export type Pattern = boolean[];
   export type Song = { kick: Pattern; snare: Pattern; hat: Pattern };
+  export type MuteState = Record<typeof VOICES[number], boolean>;
   export const STEP_COUNT = 16;
   export const VOICES = ['kick', 'snare', 'hat'] as const;
+  export function emptyMutes(): MuteState { return { kick: false, snare: false, hat: false }; }
+  export function toggleMute(muted: MuteState, voice: typeof VOICES[number]): MuteState { return { ...muted, [voice]: !muted[voice] }; }
+  export function voiceAudible(muted: MuteState, voice: typeof VOICES[number]): boolean { return !muted[voice]; }
   export const PRESETS: Record<string, { tempo: number; song: Song }> = {
     'Quiet Neighbour': { tempo: 72, song: { kick: [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false], snare: Array(STEP_COUNT).fill(false), hat: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false] } },
     'Saucepan Parade': { tempo: 112, song: { kick: [true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false], snare: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false], hat: Array(STEP_COUNT).fill(true) } },

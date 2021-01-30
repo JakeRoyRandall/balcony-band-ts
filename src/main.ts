@@ -1,5 +1,6 @@
 /// <reference path="./logic.ts" />
 const song = BalconyBand.emptySong();
+const muted = BalconyBand.emptyMutes();
 let tempo = 96;
 let running = false;
 let step = 0;
@@ -14,7 +15,7 @@ const feedback = $('feedback');
 const grid = document.querySelector<HTMLElement>('.grid')!;
 grid.setAttribute('aria-label', 'Sixteen step rhythm grid');
 const labels: Record<keyof BalconyBand.Song, string> = { kick: 'KICK', snare: 'SNARE', hat: 'HAT' };
-grid.innerHTML = '<div class="corner">VOICE / STEP</div>' + Array.from({ length: BalconyBand.STEP_COUNT }, (_, index) => `<div class="step-head">${index + 1}</div>`).join('') + (Object.keys(labels) as (keyof BalconyBand.Song)[]).map((voice) => `<div class="voice">${labels[voice]}</div>${Array.from({ length: BalconyBand.STEP_COUNT }, (_, stepIndex) => `<button type="button" role="gridcell" data-voice="${voice}" data-step="${stepIndex}" aria-label="${labels[voice]} step ${stepIndex + 1}" aria-pressed="false" tabindex="-1"></button>`).join('')}`).join('');
+grid.innerHTML = '<div class="corner">VOICE / STEP</div>' + Array.from({ length: BalconyBand.STEP_COUNT }, (_, index) => `<div class="step-head">${index + 1}</div>`).join('') + (Object.keys(labels) as (keyof BalconyBand.Song)[]).map((voice) => `<div class="voice-label"><span>${labels[voice]}</span><button type="button" class="mute" data-mute="${voice}" aria-label="Mute ${labels[voice].toLowerCase()}" aria-pressed="false">LIVE</button></div>${Array.from({ length: BalconyBand.STEP_COUNT }, (_, stepIndex) => `<button type="button" role="gridcell" data-voice="${voice}" data-step="${stepIndex}" aria-label="${labels[voice]} step ${stepIndex + 1}" aria-pressed="false" tabindex="-1"></button>`).join('')}`).join('');
 let focusRow = 0;
 let focusColumn = 0;
 function focusCell(row: number, column: number, moveFocus: boolean): void {
@@ -29,6 +30,7 @@ function draw(): void {
   $('transport').textContent = running ? 'Stop groove' : 'Start groove';
   document.querySelectorAll<HTMLButtonElement>('[data-step]').forEach((button) => button.classList.toggle('current', running && Number(button.dataset.step) === step));
   document.querySelectorAll<HTMLButtonElement>('[data-voice][data-step]').forEach((button) => { const on = song[button.dataset.voice as keyof BalconyBand.Song][Number(button.dataset.step)]; button.classList.toggle('on', on); button.setAttribute('aria-pressed', String(on)); });
+  document.querySelectorAll<HTMLButtonElement>('[data-mute]').forEach((button) => { const voice = button.dataset.mute as keyof BalconyBand.MuteState; const isMuted = muted[voice]; button.setAttribute('aria-pressed', String(isMuted)); button.setAttribute('aria-label', `${isMuted ? 'Unmute' : 'Mute'} ${labels[voice].toLowerCase()}`); button.textContent = isMuted ? 'MUTED' : 'LIVE'; button.classList.toggle('muted', isMuted); });
 }
 function track(node: AudioScheduledSourceNode): void { activeNodes.add(node); node.addEventListener('ended', () => activeNodes.delete(node), { once: true }); }
 function blip(kind: 'kick' | 'snare' | 'hat', at: number): void {
@@ -41,7 +43,7 @@ function tick(): void {
   if (!running) return;
   if (!audio) return;
   if (nextAudioTime < audio.currentTime - 0.1) nextAudioTime = audio.currentTime + 0.02;
-  if (song.kick[step]) blip('kick', nextAudioTime); if (song.snare[step]) blip('snare', nextAudioTime); if (song.hat[step]) blip('hat', nextAudioTime);
+  if (BalconyBand.voiceAudible(muted, 'kick') && song.kick[step]) blip('kick', nextAudioTime); if (BalconyBand.voiceAudible(muted, 'snare') && song.snare[step]) blip('snare', nextAudioTime); if (BalconyBand.voiceAudible(muted, 'hat') && song.hat[step]) blip('hat', nextAudioTime);
   draw(); step = (step + 1) % BalconyBand.STEP_COUNT; nextAudioTime += BalconyBand.stepMs(tempo) / 1000; timer = window.setTimeout(tick, Math.max(8, (nextAudioTime - audio.currentTime) * 1000));
 }
 async function start(): Promise<void> { if (running || starting) return; starting = true; const token = ++generation; try { audio = audio || new AudioContext(); await audio.resume(); if (token !== generation) return; running = true; starting = false; step = 0; nextAudioTime = audio.currentTime + 0.02; feedback.textContent = 'Balcony is live.'; tick(); } catch (_error) { if (token === generation) { starting = false; feedback.textContent = 'Audio could not start. Try again.'; } } }
@@ -55,6 +57,7 @@ document.querySelectorAll<HTMLButtonElement>('[data-voice][data-step]').forEach(
     event.preventDefault(); const next = BalconyBand.navigateGrid(focusRow, focusColumn, key); focusCell(next.row, next.column, true);
   });
 });
+document.querySelectorAll<HTMLButtonElement>('[data-mute]').forEach((button) => button.addEventListener('click', () => { const voice = button.dataset.mute as keyof BalconyBand.MuteState; const next = BalconyBand.toggleMute(muted, voice); Object.assign(muted, next); feedback.textContent = muted[voice] ? `${labels[voice]} muted for audition.` : `${labels[voice]} back in the mix.`; draw(); }));
 $('transport').addEventListener('click', () => { if (running || starting) stop(); else void start(); });
 $('preset').addEventListener('change', (event) => { const name = (event.target as HTMLSelectElement).value; if (name) { const selected = BalconyBand.preset(name); changePattern(selected.song, selected.tempo); (event.target as HTMLSelectElement).value = ''; } });
 $('clear').addEventListener('click', () => changePattern(BalconyBand.clearSong()));

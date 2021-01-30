@@ -3,6 +3,12 @@ var BalconyBand;
 (function (BalconyBand) {
     BalconyBand.STEP_COUNT = 16;
     BalconyBand.VOICES = ['kick', 'snare', 'hat'];
+    function emptyMutes() { return { kick: false, snare: false, hat: false }; }
+    BalconyBand.emptyMutes = emptyMutes;
+    function toggleMute(muted, voice) { return Object.assign(Object.assign({}, muted), { [voice]: !muted[voice] }); }
+    BalconyBand.toggleMute = toggleMute;
+    function voiceAudible(muted, voice) { return !muted[voice]; }
+    BalconyBand.voiceAudible = voiceAudible;
     BalconyBand.PRESETS = {
         'Quiet Neighbour': { tempo: 72, song: { kick: [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false], snare: Array(BalconyBand.STEP_COUNT).fill(false), hat: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false] } },
         'Saucepan Parade': { tempo: 112, song: { kick: [true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false], snare: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false], hat: Array(BalconyBand.STEP_COUNT).fill(true) } },
