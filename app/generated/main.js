@@ -33,7 +33,7 @@ function focusCell(row, column, moveFocus) {
 }
 const patternTools = document.createElement('div');
 patternTools.className = 'pattern-tools';
-patternTools.innerHTML = '<textarea id="pattern-json" aria-label="Pattern JSON" rows="3" placeholder="Pattern JSON lives here"></textarea><button id="export" class="transport">Export JSON</button><button id="import" class="transport">Import JSON</button><button id="undo" class="transport" disabled>Undo</button><button id="redo" class="transport" disabled>Redo</button><div class="save-tools"><label for="save-name">SAVE NAME</label><input id="save-name" maxlength="40" placeholder="e.g. Tuesday kitchen" aria-label="Save name"><button id="save" class="transport">Save</button><select id="save-slot" aria-label="Saved pattern"><option value="">Choose saved pattern…</option></select><button id="load" class="transport">Load</button><button id="delete-save" class="transport">Delete</button></div>';
+patternTools.innerHTML = '<textarea id="pattern-json" aria-label="Pattern JSON" rows="3" placeholder="Pattern JSON lives here"></textarea><button id="export" class="transport">Export JSON</button><button id="import" class="transport">Import JSON</button><button id="undo" class="transport" disabled>Undo</button><button id="redo" class="transport" disabled>Redo</button><div class="euclidean-tools"><label for="euclidean-voice">EUCLIDEAN</label><select id="euclidean-voice" aria-label="Euclidean voice"><option value="kick">Kick</option><option value="snare">Snare</option><option value="hat">Hat</option></select><label for="euclidean-pulses">PULSES</label><input id="euclidean-pulses" type="number" min="0" max="16" value="3" required aria-label="Euclidean pulses"><label for="euclidean-rotation">ROTATION</label><input id="euclidean-rotation" type="number" min="0" max="15" value="0" required aria-label="Euclidean rotation"><button id="euclidean-generate" class="transport">Generate</button></div><div class="save-tools"><label for="save-name">SAVE NAME</label><input id="save-name" maxlength="40" placeholder="e.g. Tuesday kitchen" aria-label="Save name"><button id="save" class="transport">Save</button><select id="save-slot" aria-label="Saved pattern"><option value="">Choose saved pattern…</option></select><button id="load" class="transport">Load</button><button id="delete-save" class="transport">Delete</button></div>';
 feedback.parentElement.insertBefore(patternTools, feedback);
 let editHistoryState = BalconyBand.createHistory(song, tempo);
 const saveKey = 'balcony-band:saves:v1';
@@ -223,6 +223,17 @@ catch (error) {
 } });
 $('tempo').addEventListener('input', (event) => { tempo = BalconyBand.validateTempo(Number(event.target.value)); editHistoryState = Object.assign(Object.assign({}, editHistoryState), { present: Object.assign(Object.assign({}, editHistoryState.present), { tempo }) }); draw(); });
 $('swing').addEventListener('input', (event) => { swing = BalconyBand.validateSwing(Number(event.target.value)); feedback.textContent = `Swing ${swing}%.`; draw(); });
+$('euclidean-generate').addEventListener('click', () => { try {
+    const voice = $('euclidean-voice').value;
+    const pulses = $('euclidean-pulses').valueAsNumber;
+    const rotation = $('euclidean-rotation').valueAsNumber;
+    const next = BalconyBand.cloneSong(song);
+    next[voice] = BalconyBand.euclideanPattern(BalconyBand.STEP_COUNT, pulses, rotation);
+    commitPattern(next, tempo, `${labels[voice]} generated with ${pulses} pulses, rotation ${rotation}.`, false);
+}
+catch (error) {
+    feedback.textContent = `Generate failed: ${error.message}`;
+} });
 function selectedSaveName() { return BalconyBand.normalizeSaveName($('save-name').value); }
 function selectedSlotName() { return $('save-slot').value; }
 $('save').addEventListener('click', () => { try {

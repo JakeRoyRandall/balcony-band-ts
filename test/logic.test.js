@@ -19,6 +19,10 @@ const rotationSource = { kick: [true, false, true, false].concat(Array(12).fill(
 const rotatedLeft = band.rotateVoice(rotationSource, 'kick', 'left');
 assert.equal(rotatedLeft.kick[15], true); assert.equal(rotatedLeft.kick.filter(Boolean).length, 2);
 assert.deepEqual(band.rotateVoice(rotatedLeft, 'kick', 'right'), rotationSource);
+assert.deepEqual(band.euclideanPattern(8, 3, 0), [true, false, false, true, false, false, true, false]);
+assert.equal(band.euclideanPattern(16, 0, 0).filter(Boolean).length, 0); assert.equal(band.euclideanPattern(16, 16, 7).filter(Boolean).length, 16);
+assert.equal(band.euclideanPattern(16, 5, 4).filter(Boolean).length, 5); assert.deepEqual(band.euclideanPattern(16, 5, 4), band.euclideanPattern(16, 5, 4));
+assert.throws(() => band.euclideanPattern(16, -1, 0), /pulses/); assert.throws(() => band.euclideanPattern(16, 17, 0), /pulses/); assert.throws(() => band.euclideanPattern(16, 3, 16), /rotation/); assert.throws(() => band.euclideanPattern(0, 0, 0), /steps/);
 let history = band.createHistory(song, 96);
 history = band.editHistory(history, {song: band.toggle(song, 'kick', 0), tempo: 96});
 assert.equal(history.past.length, 1); assert.equal(history.present.song.kick[0], true);

@@ -124,6 +124,12 @@ namespace BalconyBand {
     return pattern.map((_, index) => pattern[(index + offset) % pattern.length]);
   }
   export function rotateVoice(song: Song, voice: keyof Song, direction: 'left' | 'right'): Song { return { ...song, [voice]: rotate(song[voice], direction) }; }
+  export function euclideanPattern(steps: number, pulses: number, rotation: number): Pattern {
+    if (!Number.isInteger(steps) || steps < 1 || steps > 128) throw new RangeError('steps must be 1..128');
+    if (!Number.isInteger(pulses) || pulses < 0 || pulses > steps) throw new RangeError(`pulses must be 0..${steps}`);
+    if (!Number.isInteger(rotation) || rotation < 0 || rotation >= steps) throw new RangeError(`rotation must be 0..${steps - 1}`);
+    return Array.from({ length: steps }, (_, index) => ((index - rotation + steps) % steps) * pulses % steps < pulses);
+  }
   export function navigateGrid(row: number, column: number, key: string, rows = 3, columns = STEP_COUNT): { row: number; column: number } {
     if (!Number.isInteger(row) || !Number.isInteger(column) || row < 0 || row >= rows || column < 0 || column >= columns) throw new RangeError('grid position is outside the grid');
     if (key === 'ArrowLeft') return { row, column: Math.max(0, column - 1) };

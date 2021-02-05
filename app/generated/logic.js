@@ -197,6 +197,16 @@ var BalconyBand;
     BalconyBand.rotate = rotate;
     function rotateVoice(song, voice, direction) { return Object.assign(Object.assign({}, song), { [voice]: rotate(song[voice], direction) }); }
     BalconyBand.rotateVoice = rotateVoice;
+    function euclideanPattern(steps, pulses, rotation) {
+        if (!Number.isInteger(steps) || steps < 1 || steps > 128)
+            throw new RangeError('steps must be 1..128');
+        if (!Number.isInteger(pulses) || pulses < 0 || pulses > steps)
+            throw new RangeError(`pulses must be 0..${steps}`);
+        if (!Number.isInteger(rotation) || rotation < 0 || rotation >= steps)
+            throw new RangeError(`rotation must be 0..${steps - 1}`);
+        return Array.from({ length: steps }, (_, index) => ((index - rotation + steps) % steps) * pulses % steps < pulses);
+    }
+    BalconyBand.euclideanPattern = euclideanPattern;
     function navigateGrid(row, column, key, rows = 3, columns = BalconyBand.STEP_COUNT) {
         if (!Number.isInteger(row) || !Number.isInteger(column) || row < 0 || row >= rows || column < 0 || column >= columns)
             throw new RangeError('grid position is outside the grid');
