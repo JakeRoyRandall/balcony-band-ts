@@ -37,7 +37,7 @@ patternTools.innerHTML = '<textarea id="pattern-json" aria-label="Pattern JSON" 
 feedback.parentElement.insertBefore(patternTools, feedback);
 const copyTools = document.createElement('div');
 copyTools.className = 'copy-tools';
-copyTools.innerHTML = '<label for="copy-source">COPY VOICE</label><select id="copy-source" aria-label="Copy source voice"><option value="kick">Kick</option><option value="snare">Snare</option><option value="hat">Hat</option></select><button id="copy" class="transport">Copy</button><span id="copied-label">Pattern clipboard: empty</span><label for="paste-target">PASTE TO</label><select id="paste-target" aria-label="Paste target voice"><option value="kick">Kick</option><option value="snare">Snare</option><option value="hat">Hat</option></select><button id="paste" class="transport" disabled>Paste</button></div>';
+copyTools.innerHTML = '<label for="copy-source">COPY VOICE</label><select id="copy-source" aria-label="Copy source voice"><option value="kick">Kick</option><option value="snare">Snare</option><option value="hat">Hat</option></select><button id="copy" class="transport">Copy</button><span id="copied-label">Pattern clipboard: empty</span><label for="paste-target">PASTE TO</label><select id="paste-target" aria-label="Paste target voice"><option value="kick">Kick</option><option value="snare">Snare</option><option value="hat">Hat</option></select><button id="paste" class="transport" disabled>Paste</button><label for="transform-voice">EDIT VOICE</label><select id="transform-voice" aria-label="Edit target voice"><option value="kick">Kick</option><option value="snare">Snare</option><option value="hat">Hat</option></select><button id="invert" class="transport">Invert</button><button id="reverse" class="transport">Reverse</button></div>';
 patternTools.appendChild(copyTools);
 const analysis = document.createElement('p');
 analysis.className = 'analysis';
@@ -251,6 +251,8 @@ catch (error) {
 $('copy').addEventListener('click', () => { copiedVoice = $('copy-source').value; copiedPattern = BalconyBand.copyVoice(song, copiedVoice); feedback.textContent = `${labels[copiedVoice]} copied to the internal pattern clipboard.`; draw(); });
 $('paste').addEventListener('click', () => { if (!copiedPattern)
     return; const voice = $('paste-target').value; const next = BalconyBand.pasteVoice(song, voice, copiedPattern); commitPattern(next, tempo, `${labels[copiedVoice]} pasted to ${labels[voice]}.`, false); });
+$('invert').addEventListener('click', () => { const voice = $('transform-voice').value; commitPattern(BalconyBand.invertVoice(song, voice), tempo, `${labels[voice]} inverted.`, false); });
+$('reverse').addEventListener('click', () => { const voice = $('transform-voice').value; commitPattern(BalconyBand.reverseVoice(song, voice), tempo, `${labels[voice]} reversed.`, false); });
 function selectedSaveName() { return BalconyBand.normalizeSaveName($('save-name').value); }
 function selectedSlotName() { return $('save-slot').value; }
 $('save').addEventListener('click', () => { try {

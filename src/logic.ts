@@ -128,6 +128,8 @@ namespace BalconyBand {
   export function rotateVoice(song: Song, voice: keyof Song, direction: 'left' | 'right'): Song { return { ...song, [voice]: rotate(song[voice], direction) }; }
   export function copyVoice(song: Song, voice: keyof Song): Pattern { return [...song[voice]]; }
   export function pasteVoice(song: Song, voice: keyof Song, pattern: Pattern): Song { if (pattern.length !== STEP_COUNT || pattern.some((value) => typeof value !== 'boolean')) throw new TypeError('copied voice must be sixteen booleans'); return { ...song, [voice]: [...pattern] }; }
+  export function invertVoice(song: Song, voice: keyof Song): Song { return { ...song, [voice]: song[voice].map((on) => !on) }; }
+  export function reverseVoice(song: Song, voice: keyof Song): Song { return { ...song, [voice]: [...song[voice]].reverse() }; }
   export function analyzePattern(pattern: Pattern): PatternVoiceAnalysis {
     const hits = pattern.filter(Boolean).length; const density = pattern.length ? Math.round((hits / pattern.length) * 1000) / 10 : 0;
     if (hits === 0) return { hits, density, longestGap: pattern.length };

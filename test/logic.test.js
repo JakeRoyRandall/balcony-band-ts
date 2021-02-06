@@ -34,6 +34,8 @@ const copied = band.copyVoice(rotationSource, 'kick'); const copiedBefore = JSON
 const pastedSong = band.pasteVoice(rotationSource, 'snare', copied); assert.deepEqual(pastedSong.snare, rotationSource.kick); assert.deepEqual(pastedSong.kick, rotationSource.kick); assert.equal(JSON.stringify(copied), copiedBefore);
 copied[0] = false; assert.equal(pastedSong.snare[0], true);
 assert.throws(() => band.pasteVoice(rotationSource, 'hat', [true]), /sixteen booleans/);
+const transformed = band.invertVoice(rotationSource, 'kick'); assert.equal(transformed.kick.filter(Boolean).length, 14); assert.deepEqual(band.invertVoice(transformed, 'kick').kick, rotationSource.kick); assert.deepEqual(transformed.snare, rotationSource.snare);
+const reversed = band.reverseVoice(rotationSource, 'kick'); assert.deepEqual(reversed.kick, [...rotationSource.kick].reverse()); assert.deepEqual(band.reverseVoice(reversed, 'kick').kick, rotationSource.kick); assert.deepEqual(reversed.snare, rotationSource.snare);
 let history = band.createHistory(song, 96);
 history = band.editHistory(history, {song: band.toggle(song, 'kick', 0), tempo: 96});
 assert.equal(history.past.length, 1); assert.equal(history.present.song.kick[0], true);
