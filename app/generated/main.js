@@ -16,7 +16,7 @@ const feedback = $('feedback');
 const grid = document.querySelector('.grid');
 grid.setAttribute('aria-label', 'Sixteen step rhythm grid');
 const labels = { kick: 'KICK', snare: 'SNARE', hat: 'HAT' };
-grid.innerHTML = '<div class="corner">VOICE / STEP</div>' + Array.from({ length: BalconyBand.STEP_COUNT }, (_, index) => `<div class="step-head">${index + 1}</div>`).join('') + Object.keys(labels).map((voice) => `<div class="voice-label"><span>${labels[voice]}</span><button type="button" class="mute" data-mute="${voice}" aria-label="Mute ${labels[voice].toLowerCase()}" aria-pressed="false">LIVE</button></div>${Array.from({ length: BalconyBand.STEP_COUNT }, (_, stepIndex) => `<button type="button" role="gridcell" data-voice="${voice}" data-step="${stepIndex}" aria-label="${labels[voice]} step ${stepIndex + 1}" aria-pressed="false" tabindex="-1"></button>`).join('')}`).join('');
+grid.innerHTML = '<div class="corner">VOICE / STEP</div>' + Array.from({ length: BalconyBand.STEP_COUNT }, (_, index) => `<div class="step-head">${index + 1}</div>`).join('') + Object.keys(labels).map((voice) => `<div class="voice-label"><span>${labels[voice]}</span><span class="voice-actions"><button type="button" class="rotate" data-rotate="left" data-rotate-voice="${voice}" aria-label="Shift ${labels[voice].toLowerCase()} left">←</button><button type="button" class="rotate" data-rotate="right" data-rotate-voice="${voice}" aria-label="Shift ${labels[voice].toLowerCase()} right">→</button><button type="button" class="mute" data-mute="${voice}" aria-label="Mute ${labels[voice].toLowerCase()}" aria-pressed="false">LIVE</button></span></div>${Array.from({ length: BalconyBand.STEP_COUNT }, (_, stepIndex) => `<button type="button" role="gridcell" data-voice="${voice}" data-step="${stepIndex}" aria-label="${labels[voice]} step ${stepIndex + 1}" aria-pressed="false" tabindex="-1"></button>`).join('')}`).join('');
 let focusRow = 0;
 let focusColumn = 0;
 function focusCell(row, column, moveFocus) {
@@ -145,6 +145,7 @@ document.querySelectorAll('[data-voice][data-step]').forEach((button) => {
     });
 });
 document.querySelectorAll('[data-mute]').forEach((button) => button.addEventListener('click', () => { const voice = button.dataset.mute; const next = BalconyBand.toggleMute(muted, voice); Object.assign(muted, next); feedback.textContent = muted[voice] ? `${labels[voice]} muted for audition.` : `${labels[voice]} back in the mix.`; draw(); }));
+document.querySelectorAll('[data-rotate]').forEach((button) => button.addEventListener('click', () => { const voice = button.dataset.rotateVoice; const direction = button.dataset.rotate; const next = BalconyBand.rotateVoice(song, voice, direction); commitPattern(next, tempo, `${labels[voice]} shifted ${direction}.`, false); }));
 $('undo').addEventListener('click', () => restoreHistory(BalconyBand.undoHistory(editHistoryState), 'Undid pattern edit.'));
 $('redo').addEventListener('click', () => restoreHistory(BalconyBand.redoHistory(editHistoryState), 'Redid pattern edit.'));
 $('transport').addEventListener('click', () => { if (running || starting)

@@ -76,6 +76,15 @@ var BalconyBand;
         return Object.assign(Object.assign({}, song), { [voice]: song[voice].map((on, index) => index === step ? !on : on) });
     }
     BalconyBand.toggle = toggle;
+    function rotate(pattern, direction) {
+        if (pattern.length === 0)
+            return [];
+        const offset = direction === 'left' ? 1 : pattern.length - 1;
+        return pattern.map((_, index) => pattern[(index + offset) % pattern.length]);
+    }
+    BalconyBand.rotate = rotate;
+    function rotateVoice(song, voice, direction) { return Object.assign(Object.assign({}, song), { [voice]: rotate(song[voice], direction) }); }
+    BalconyBand.rotateVoice = rotateVoice;
     function navigateGrid(row, column, key, rows = 3, columns = BalconyBand.STEP_COUNT) {
         if (!Number.isInteger(row) || !Number.isInteger(column) || row < 0 || row >= rows || column < 0 || column >= columns)
             throw new RangeError('grid position is outside the grid');

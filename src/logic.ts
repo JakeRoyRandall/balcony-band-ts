@@ -48,6 +48,12 @@ namespace BalconyBand {
     if (!Number.isInteger(step) || step < 0 || step >= STEP_COUNT) throw new RangeError(`step must be 0..${STEP_COUNT - 1}`);
     return { ...song, [voice]: song[voice].map((on, index) => index === step ? !on : on) };
   }
+  export function rotate(pattern: Pattern, direction: 'left' | 'right'): Pattern {
+    if (pattern.length === 0) return [];
+    const offset = direction === 'left' ? 1 : pattern.length - 1;
+    return pattern.map((_, index) => pattern[(index + offset) % pattern.length]);
+  }
+  export function rotateVoice(song: Song, voice: keyof Song, direction: 'left' | 'right'): Song { return { ...song, [voice]: rotate(song[voice], direction) }; }
   export function navigateGrid(row: number, column: number, key: string, rows = 3, columns = STEP_COUNT): { row: number; column: number } {
     if (!Number.isInteger(row) || !Number.isInteger(column) || row < 0 || row >= rows || column < 0 || column >= columns) throw new RangeError('grid position is outside the grid');
     if (key === 'ArrowLeft') return { row, column: Math.max(0, column - 1) };
