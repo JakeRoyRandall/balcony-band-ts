@@ -9,6 +9,14 @@ var BalconyBand;
     BalconyBand.toggleMute = toggleMute;
     function voiceAudible(muted, voice) { return !muted[voice]; }
     BalconyBand.voiceAudible = voiceAudible;
+    function validateVelocity(velocity) { if (!Number.isFinite(velocity) || velocity < 0 || velocity > 100)
+        throw new RangeError('velocity must be 0..100'); return Math.round(velocity); }
+    BalconyBand.validateVelocity = validateVelocity;
+    function velocityGain(baseGain, velocity) { if (!Number.isFinite(baseGain) || baseGain < 0)
+        throw new RangeError('base gain must be nonnegative'); return baseGain * validateVelocity(velocity) / 100; }
+    BalconyBand.velocityGain = velocityGain;
+    function voiceScheduled(muted, voice, velocity) { return voiceAudible(muted, voice) && validateVelocity(velocity) > 0; }
+    BalconyBand.voiceScheduled = voiceScheduled;
     function sameSnapshot(left, right) { return left.tempo === right.tempo && BalconyBand.VOICES.every((voice) => left.song[voice].every((on, index) => on === right.song[voice][index])); }
     function createHistory(song, tempo) { return { past: [], present: { song: cloneSong(song), tempo }, future: [] }; }
     BalconyBand.createHistory = createHistory;

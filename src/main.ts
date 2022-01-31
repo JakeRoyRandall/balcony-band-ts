@@ -1,6 +1,7 @@
 /// <reference path="./logic.ts" />
 const song = BalconyBand.emptySong();
 const muted = BalconyBand.emptyMutes();
+const velocities: BalconyBand.VelocityState = { kick: 100, snare: 100, hat: 100 };
 let tempo = 96;
 let running = false;
 let step = 0;
@@ -15,7 +16,7 @@ const feedback = $('feedback');
 const grid = document.querySelector<HTMLElement>('.grid')!;
 grid.setAttribute('aria-label', 'Sixteen step rhythm grid');
 const labels: Record<keyof BalconyBand.Song, string> = { kick: 'KICK', snare: 'SNARE', hat: 'HAT' };
-grid.innerHTML = '<div class="corner">VOICE / STEP</div>' + Array.from({ length: BalconyBand.STEP_COUNT }, (_, index) => `<div class="step-head">${index + 1}</div>`).join('') + (Object.keys(labels) as (keyof BalconyBand.Song)[]).map((voice) => `<div class="voice-label"><span>${labels[voice]}</span><span class="voice-actions"><button type="button" class="rotate" data-rotate="left" data-rotate-voice="${voice}" aria-label="Shift ${labels[voice].toLowerCase()} left">←</button><button type="button" class="rotate" data-rotate="right" data-rotate-voice="${voice}" aria-label="Shift ${labels[voice].toLowerCase()} right">→</button><button type="button" class="mute" data-mute="${voice}" aria-label="Mute ${labels[voice].toLowerCase()}" aria-pressed="false">LIVE</button></span></div>${Array.from({ length: BalconyBand.STEP_COUNT }, (_, stepIndex) => `<button type="button" role="gridcell" data-voice="${voice}" data-step="${stepIndex}" aria-label="${labels[voice]} step ${stepIndex + 1}" aria-pressed="false" tabindex="-1"></button>`).join('')}`).join('');
+grid.innerHTML = '<div class="corner">VOICE / STEP</div>' + Array.from({ length: BalconyBand.STEP_COUNT }, (_, index) => `<div class="step-head">${index + 1}</div>`).join('') + (Object.keys(labels) as (keyof BalconyBand.Song)[]).map((voice) => `<div class="voice-label"><span>${labels[voice]}</span><span class="voice-actions"><button type="button" class="rotate" data-rotate="left" data-rotate-voice="${voice}" aria-label="Shift ${labels[voice].toLowerCase()} left">←</button><button type="button" class="rotate" data-rotate="right" data-rotate-voice="${voice}" aria-label="Shift ${labels[voice].toLowerCase()} right">→</button><button type="button" class="mute" data-mute="${voice}" aria-label="Mute ${labels[voice].toLowerCase()}" aria-pressed="false">LIVE</button><input class="velocity" data-velocity="${voice}" type="range" min="0" max="100" value="100" aria-label="${labels[voice].toLowerCase()} velocity"><output class="velocity-value" data-velocity-value="${voice}">100%</output></span></div>${Array.from({ length: BalconyBand.STEP_COUNT }, (_, stepIndex) => `<button type="button" role="gridcell" data-voice="${voice}" data-step="${stepIndex}" aria-label="${labels[voice]} step ${stepIndex + 1}" aria-pressed="false" tabindex="-1"></button>`).join('')}`).join('');
 let focusRow = 0;
 let focusColumn = 0;
 function focusCell(row: number, column: number, moveFocus: boolean): void {
@@ -36,6 +37,7 @@ function draw(): void {
   document.querySelectorAll<HTMLButtonElement>('[data-step]').forEach((button) => button.classList.toggle('current', running && Number(button.dataset.step) === step));
   document.querySelectorAll<HTMLButtonElement>('[data-voice][data-step]').forEach((button) => { const on = song[button.dataset.voice as keyof BalconyBand.Song][Number(button.dataset.step)]; button.classList.toggle('on', on); button.setAttribute('aria-pressed', String(on)); });
   document.querySelectorAll<HTMLButtonElement>('[data-mute]').forEach((button) => { const voice = button.dataset.mute as keyof BalconyBand.MuteState; const isMuted = muted[voice]; button.setAttribute('aria-pressed', String(isMuted)); button.setAttribute('aria-label', `${isMuted ? 'Unmute' : 'Mute'} ${labels[voice].toLowerCase()}`); button.textContent = isMuted ? 'MUTED' : 'LIVE'; button.classList.toggle('muted', isMuted); });
+  document.querySelectorAll<HTMLInputElement>('[data-velocity]').forEach((input) => { const voice = input.dataset.velocity as keyof BalconyBand.VelocityState; input.value = String(velocities[voice]); input.setAttribute('aria-valuenow', String(velocities[voice])); const output = document.querySelector<HTMLOutputElement>(`[data-velocity-value="${voice}"]`); if (output) output.value = `${velocities[voice]}%`; });
   ($('undo') as HTMLButtonElement).disabled = editHistoryState.past.length === 0;
   ($('redo') as HTMLButtonElement).disabled = editHistoryState.future.length === 0;
 }
@@ -56,7 +58,8 @@ function refreshSaves(): void {
 function track(node: AudioScheduledSourceNode): void { activeNodes.add(node); node.addEventListener('ended', () => activeNodes.delete(node), { once: true }); }
 function blip(kind: 'kick' | 'snare' | 'hat', at: number): void {
   if (!audio) return;
-  const gain = audio.createGain(); gain.gain.setValueAtTime(0.0001, at); gain.gain.exponentialRampToValueAtTime(kind === 'kick' ? 0.16 : 0.045, at + 0.005);
+  const level = BalconyBand.velocityGain(kind === 'kick' ? 0.16 : 0.045, velocities[kind]); if (level === 0) return;
+  const gain = audio.createGain(); gain.gain.setValueAtTime(0.0001, at); gain.gain.exponentialRampToValueAtTime(level, at + 0.005);
   if (kind === 'kick') { const oscillator = audio.createOscillator(); oscillator.type = 'sine'; oscillator.frequency.setValueAtTime(150, at); oscillator.frequency.exponentialRampToValueAtTime(55, at + 0.12); gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.18); oscillator.connect(gain).connect(audio.destination); track(oscillator); oscillator.start(at); oscillator.stop(at + 0.2); return; }
   const source = audio.createBufferSource(); const buffer = audio.createBuffer(1, audio.sampleRate * 0.12, audio.sampleRate); const data = buffer.getChannelData(0); for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1; source.buffer = buffer; const filter = audio.createBiquadFilter(); filter.type = kind === 'hat' ? 'highpass' : 'bandpass'; filter.frequency.value = kind === 'hat' ? 5000 : 1800; source.connect(filter).connect(gain).connect(audio.destination); gain.gain.exponentialRampToValueAtTime(0.0001, at + (kind === 'hat' ? 0.045 : 0.11)); track(source); source.start(at); source.stop(at + 0.12);
 }
@@ -64,7 +67,7 @@ function tick(): void {
   if (!running) return;
   if (!audio) return;
   if (nextAudioTime < audio.currentTime - 0.1) nextAudioTime = audio.currentTime + 0.02;
-  if (BalconyBand.voiceAudible(muted, 'kick') && song.kick[step]) blip('kick', nextAudioTime); if (BalconyBand.voiceAudible(muted, 'snare') && song.snare[step]) blip('snare', nextAudioTime); if (BalconyBand.voiceAudible(muted, 'hat') && song.hat[step]) blip('hat', nextAudioTime);
+  if (BalconyBand.voiceScheduled(muted, 'kick', velocities.kick) && song.kick[step]) blip('kick', nextAudioTime); if (BalconyBand.voiceScheduled(muted, 'snare', velocities.snare) && song.snare[step]) blip('snare', nextAudioTime); if (BalconyBand.voiceScheduled(muted, 'hat', velocities.hat) && song.hat[step]) blip('hat', nextAudioTime);
   draw(); step = (step + 1) % BalconyBand.STEP_COUNT; nextAudioTime += BalconyBand.stepMs(tempo) / 1000; timer = window.setTimeout(tick, Math.max(8, (nextAudioTime - audio.currentTime) * 1000));
 }
 async function start(): Promise<void> { if (running || starting) return; starting = true; const token = ++generation; try { audio = audio || new AudioContext(); await audio.resume(); if (token !== generation) return; running = true; starting = false; step = 0; nextAudioTime = audio.currentTime + 0.02; feedback.textContent = 'Balcony is live.'; tick(); } catch (_error) { if (token === generation) { starting = false; feedback.textContent = 'Audio could not start. Try again.'; } } }
@@ -80,6 +83,7 @@ document.querySelectorAll<HTMLButtonElement>('[data-voice][data-step]').forEach(
 });
 document.querySelectorAll<HTMLButtonElement>('[data-mute]').forEach((button) => button.addEventListener('click', () => { const voice = button.dataset.mute as keyof BalconyBand.MuteState; const next = BalconyBand.toggleMute(muted, voice); Object.assign(muted, next); feedback.textContent = muted[voice] ? `${labels[voice]} muted for audition.` : `${labels[voice]} back in the mix.`; draw(); }));
 document.querySelectorAll<HTMLButtonElement>('[data-rotate]').forEach((button) => button.addEventListener('click', () => { const voice = button.dataset.rotateVoice as keyof BalconyBand.Song; const direction = button.dataset.rotate as 'left' | 'right'; const next = BalconyBand.rotateVoice(song, voice, direction); commitPattern(next, tempo, `${labels[voice]} shifted ${direction}.`, false); }));
+document.querySelectorAll<HTMLInputElement>('[data-velocity]').forEach((input) => input.addEventListener('input', () => { const voice = input.dataset.velocity as keyof BalconyBand.VelocityState; try { velocities[voice] = BalconyBand.validateVelocity(Number(input.value)); feedback.textContent = `${labels[voice]} velocity ${velocities[voice]}%.`; draw(); } catch (error) { feedback.textContent = `Velocity failed: ${(error as Error).message}`; } }));
 $('undo').addEventListener('click', () => restoreHistory(BalconyBand.undoHistory(editHistoryState), 'Undid pattern edit.'));
 $('redo').addEventListener('click', () => restoreHistory(BalconyBand.redoHistory(editHistoryState), 'Redid pattern edit.'));
 $('transport').addEventListener('click', () => { if (running || starting) stop(); else void start(); });

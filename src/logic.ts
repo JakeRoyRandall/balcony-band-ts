@@ -6,11 +6,15 @@ namespace BalconyBand {
   export type HistoryState = { past: PatternSnapshot[]; present: PatternSnapshot; future: PatternSnapshot[] };
   export type SaveSlot = { schema: 1; name: string; tempo: number; song: Song };
   export type SaveCollection = { schema: 1; slots: Record<string, SaveSlot> };
+  export type VelocityState = Record<typeof VOICES[number], number>;
   export const STEP_COUNT = 16;
   export const VOICES = ['kick', 'snare', 'hat'] as const;
   export function emptyMutes(): MuteState { return { kick: false, snare: false, hat: false }; }
   export function toggleMute(muted: MuteState, voice: typeof VOICES[number]): MuteState { return { ...muted, [voice]: !muted[voice] }; }
   export function voiceAudible(muted: MuteState, voice: typeof VOICES[number]): boolean { return !muted[voice]; }
+  export function validateVelocity(velocity: number): number { if (!Number.isFinite(velocity) || velocity < 0 || velocity > 100) throw new RangeError('velocity must be 0..100'); return Math.round(velocity); }
+  export function velocityGain(baseGain: number, velocity: number): number { if (!Number.isFinite(baseGain) || baseGain < 0) throw new RangeError('base gain must be nonnegative'); return baseGain * validateVelocity(velocity) / 100; }
+  export function voiceScheduled(muted: MuteState, voice: typeof VOICES[number], velocity: number): boolean { return voiceAudible(muted, voice) && validateVelocity(velocity) > 0; }
   function sameSnapshot(left: PatternSnapshot, right: PatternSnapshot): boolean { return left.tempo === right.tempo && VOICES.every((voice) => left.song[voice].every((on, index) => on === right.song[voice][index])); }
   export function createHistory(song: Song, tempo: number): HistoryState { return { past: [], present: { song: cloneSong(song), tempo }, future: [] }; }
   export function editHistory(history: HistoryState, next: PatternSnapshot): HistoryState {
