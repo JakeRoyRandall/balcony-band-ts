@@ -23,6 +23,13 @@ assert.deepEqual(band.euclideanPattern(8, 3, 0), [true, false, false, true, fals
 assert.equal(band.euclideanPattern(16, 0, 0).filter(Boolean).length, 0); assert.equal(band.euclideanPattern(16, 16, 7).filter(Boolean).length, 16);
 assert.equal(band.euclideanPattern(16, 5, 4).filter(Boolean).length, 5); assert.deepEqual(band.euclideanPattern(16, 5, 4), band.euclideanPattern(16, 5, 4));
 assert.throws(() => band.euclideanPattern(16, -1, 0), /pulses/); assert.throws(() => band.euclideanPattern(16, 17, 0), /pulses/); assert.throws(() => band.euclideanPattern(16, 3, 16), /rotation/); assert.throws(() => band.euclideanPattern(0, 0, 0), /steps/);
+assert.deepEqual(band.analyzePattern(Array(16).fill(false)), {hits: 0, density: 0, longestGap: 16});
+assert.deepEqual(band.analyzePattern(Array(16).fill(true)), {hits: 16, density: 100, longestGap: 0});
+assert.deepEqual(band.analyzePattern([true, false, false, true, false, false, false, false]), {hits: 2, density: 25, longestGap: 4});
+assert.deepEqual(band.analyzePattern([false, false, true, false, false, false, false, false]), {hits: 1, density: 12.5, longestGap: 7});
+const analysisSong = {kick: [true, false].concat(Array(14).fill(false)), snare: [true, false].concat(Array(14).fill(false)), hat: Array(16).fill(false)};
+const analysisBefore = JSON.stringify(analysisSong); const songReport = band.analyzeSong(analysisSong);
+assert.equal(songReport.sharedSteps, 1); assert.equal(songReport.voices.kick.hits, 1); assert.equal(JSON.stringify(analysisSong), analysisBefore);
 let history = band.createHistory(song, 96);
 history = band.editHistory(history, {song: band.toggle(song, 'kick', 0), tempo: 96});
 assert.equal(history.past.length, 1); assert.equal(history.present.song.kick[0], true);

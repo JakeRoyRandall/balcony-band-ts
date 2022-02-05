@@ -35,6 +35,10 @@ const patternTools = document.createElement('div');
 patternTools.className = 'pattern-tools';
 patternTools.innerHTML = '<textarea id="pattern-json" aria-label="Pattern JSON" rows="3" placeholder="Pattern JSON lives here"></textarea><button id="export" class="transport">Export JSON</button><button id="import" class="transport">Import JSON</button><button id="undo" class="transport" disabled>Undo</button><button id="redo" class="transport" disabled>Redo</button><div class="euclidean-tools"><label for="euclidean-voice">EUCLIDEAN</label><select id="euclidean-voice" aria-label="Euclidean voice"><option value="kick">Kick</option><option value="snare">Snare</option><option value="hat">Hat</option></select><label for="euclidean-pulses">PULSES</label><input id="euclidean-pulses" type="number" min="0" max="16" value="3" required aria-label="Euclidean pulses"><label for="euclidean-rotation">ROTATION</label><input id="euclidean-rotation" type="number" min="0" max="15" value="0" required aria-label="Euclidean rotation"><button id="euclidean-generate" class="transport">Generate</button></div><div class="save-tools"><label for="save-name">SAVE NAME</label><input id="save-name" maxlength="40" placeholder="e.g. Tuesday kitchen" aria-label="Save name"><button id="save" class="transport">Save</button><select id="save-slot" aria-label="Saved pattern"><option value="">Choose saved pattern…</option></select><button id="load" class="transport">Load</button><button id="delete-save" class="transport">Delete</button></div>';
 feedback.parentElement.insertBefore(patternTools, feedback);
+const analysis = document.createElement('p');
+analysis.className = 'analysis';
+analysis.setAttribute('aria-live', 'polite');
+feedback.parentElement.insertBefore(analysis, feedback);
 let editHistoryState = BalconyBand.createHistory(song, tempo);
 const saveKey = 'balcony-band:saves:v1';
 function applySnapshot(snapshot) { Object.assign(song, BalconyBand.cloneSong(snapshot.song)); tempo = BalconyBand.validateTempo(snapshot.tempo); $('tempo').value = String(tempo); }
@@ -58,6 +62,8 @@ function draw() {
     document.querySelectorAll('[data-mute]').forEach((button) => { const voice = button.dataset.mute; const isMuted = muted[voice]; button.setAttribute('aria-pressed', String(isMuted)); button.setAttribute('aria-label', `${isMuted ? 'Unmute' : 'Mute'} ${labels[voice].toLowerCase()}`); button.textContent = isMuted ? 'MUTED' : 'LIVE'; button.classList.toggle('muted', isMuted); });
     document.querySelectorAll('[data-velocity]').forEach((input) => { const voice = input.dataset.velocity; input.value = String(velocities[voice]); input.setAttribute('aria-valuenow', String(velocities[voice])); const output = document.querySelector(`[data-velocity-value="${voice}"]`); if (output)
         output.value = `${velocities[voice]}%`; });
+    const report = BalconyBand.analyzeSong(song);
+    analysis.textContent = BalconyBand.VOICES.map((voice) => { const item = report.voices[voice]; const gap = item.hits === 0 ? `${item.longestGap} rests` : `${item.longestGap}-step gap`; return `${labels[voice]} ${item.hits} hits · ${item.density}% · ${gap}`; }).join('  /  ') + `  ·  ${report.sharedSteps} shared steps`;
     $('undo').disabled = editHistoryState.past.length === 0;
     $('redo').disabled = editHistoryState.future.length === 0;
 }

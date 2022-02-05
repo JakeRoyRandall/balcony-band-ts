@@ -8,6 +8,8 @@ namespace BalconyBand {
   export type SaveCollection = { schema: 1; slots: Record<string, SaveSlot> };
   export type VelocityState = Record<typeof VOICES[number], number>;
   export type GroovePreset = { title: string; note: string; tempo: number; song: Song };
+  export type PatternVoiceAnalysis = { hits: number; density: number; longestGap: number };
+  export type SongAnalysis = { voices: Record<typeof VOICES[number], PatternVoiceAnalysis>; sharedSteps: number };
   export const STEP_COUNT = 16;
   export const VOICES = ['kick', 'snare', 'hat'] as const;
   export function emptyMutes(): MuteState { return { kick: false, snare: false, hat: false }; }
@@ -124,6 +126,18 @@ namespace BalconyBand {
     return pattern.map((_, index) => pattern[(index + offset) % pattern.length]);
   }
   export function rotateVoice(song: Song, voice: keyof Song, direction: 'left' | 'right'): Song { return { ...song, [voice]: rotate(song[voice], direction) }; }
+  export function analyzePattern(pattern: Pattern): PatternVoiceAnalysis {
+    const hits = pattern.filter(Boolean).length; const density = pattern.length ? Math.round((hits / pattern.length) * 1000) / 10 : 0;
+    if (hits === 0) return { hits, density, longestGap: pattern.length };
+    let longestGap = 0; let current = 0;
+    for (let index = 0; index < pattern.length * 2; index++) { if (pattern[index % pattern.length]) current = 0; else { current++; longestGap = Math.max(longestGap, current); } }
+    return { hits, density, longestGap: Math.min(longestGap, pattern.length - 1) };
+  }
+  export function analyzeSong(song: Song): SongAnalysis {
+    const voices = { kick: analyzePattern(song.kick), snare: analyzePattern(song.snare), hat: analyzePattern(song.hat) };
+    let sharedSteps = 0; for (let index = 0; index < STEP_COUNT; index++) { let voicesOn = 0; for (const voice of VOICES) if (song[voice][index]) voicesOn++; if (voicesOn > 1) sharedSteps++; }
+    return { voices, sharedSteps };
+  }
   export function euclideanPattern(steps: number, pulses: number, rotation: number): Pattern {
     if (!Number.isInteger(steps) || steps < 1 || steps > 128) throw new RangeError('steps must be 1..128');
     if (!Number.isInteger(pulses) || pulses < 0 || pulses > steps) throw new RangeError(`pulses must be 0..${steps}`);
