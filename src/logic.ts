@@ -19,6 +19,10 @@ namespace BalconyBand {
   export function velocityGain(baseGain: number, velocity: number): number { if (!Number.isFinite(baseGain) || baseGain < 0) throw new RangeError('base gain must be nonnegative'); return baseGain * validateVelocity(velocity) / 100; }
   export function voiceScheduled(muted: MuteState, voice: typeof VOICES[number], velocity: number): boolean { return voiceAudible(muted, voice) && validateVelocity(velocity) > 0; }
   export function validateSwing(swing: number): number { if (!Number.isFinite(swing) || swing < 0 || swing > 45) throw new RangeError('swing must be 0..45'); return Math.round(swing); }
+  export function validateCountInBars(bars: number): number { if (!Number.isInteger(bars) || bars < 0 || bars > 2) throw new RangeError('count-in must be 0..2 bars'); return bars; }
+  export function countInBeats(bars: number): number { return validateCountInBars(bars) * 4; }
+  export function countInIntervalMs(tempo: number): number { return stepMs(tempo) * 2; }
+  export function advanceCountIn(remainingBeats: number): { remainingBeats: number; complete: boolean } { if (!Number.isInteger(remainingBeats) || remainingBeats < 0) throw new RangeError('remaining count-in beats must be nonnegative'); const remaining = Math.max(0, remainingBeats - 1); return { remainingBeats: remaining, complete: remaining === 0 }; }
   function sameSnapshot(left: PatternSnapshot, right: PatternSnapshot): boolean { return left.tempo === right.tempo && VOICES.every((voice) => left.song[voice].every((on, index) => on === right.song[voice][index])); }
   export function createHistory(song: Song, tempo: number): HistoryState { return { past: [], present: { song: cloneSong(song), tempo }, future: [] }; }
   export function editHistory(history: HistoryState, next: PatternSnapshot): HistoryState {

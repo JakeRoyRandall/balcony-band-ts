@@ -10,6 +10,8 @@ assert.equal(band.validateSwing(0), 0); assert.equal(band.validateSwing(45), 45)
 assert.equal(band.stepIntervalMs(120, 0, 0), band.stepMs(120)); assert.equal(band.stepIntervalMs(120, 1, 0), band.stepMs(120));
 const swungPair = band.stepIntervalMs(120, 0, 45) + band.stepIntervalMs(120, 1, 45); assert.equal(swungPair, band.stepMs(120) * 2);
 assert.throws(() => band.validateSwing(-1), /0..45/); assert.throws(() => band.validateSwing(46), /0..45/); assert.throws(() => band.validateSwing(NaN), /0..45/); assert.throws(() => band.stepIntervalMs(120, -1, 0), /nonnegative/);
+assert.equal(band.validateCountInBars(0), 0); assert.equal(band.countInBeats(2), 8); assert.equal(band.countInIntervalMs(120), 500); assert.deepEqual(band.advanceCountIn(2), {remainingBeats: 1, complete: false}); assert.deepEqual(band.advanceCountIn(1), {remainingBeats: 0, complete: true});
+assert.throws(() => band.validateCountInBars(-1), /0..2/); assert.throws(() => band.validateCountInBars(3), /0..2/); assert.throws(() => band.advanceCountIn(-1), /nonnegative/);
 const mutedKick = band.toggleMute(mutes, 'kick');
 assert.equal(band.voiceAudible(mutedKick, 'kick'), false);
 assert.equal(band.voiceAudible(mutedKick, 'snare'), true);

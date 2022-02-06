@@ -20,6 +20,16 @@ var BalconyBand;
     function validateSwing(swing) { if (!Number.isFinite(swing) || swing < 0 || swing > 45)
         throw new RangeError('swing must be 0..45'); return Math.round(swing); }
     BalconyBand.validateSwing = validateSwing;
+    function validateCountInBars(bars) { if (!Number.isInteger(bars) || bars < 0 || bars > 2)
+        throw new RangeError('count-in must be 0..2 bars'); return bars; }
+    BalconyBand.validateCountInBars = validateCountInBars;
+    function countInBeats(bars) { return validateCountInBars(bars) * 4; }
+    BalconyBand.countInBeats = countInBeats;
+    function countInIntervalMs(tempo) { return stepMs(tempo) * 2; }
+    BalconyBand.countInIntervalMs = countInIntervalMs;
+    function advanceCountIn(remainingBeats) { if (!Number.isInteger(remainingBeats) || remainingBeats < 0)
+        throw new RangeError('remaining count-in beats must be nonnegative'); const remaining = Math.max(0, remainingBeats - 1); return { remainingBeats: remaining, complete: remaining === 0 }; }
+    BalconyBand.advanceCountIn = advanceCountIn;
     function sameSnapshot(left, right) { return left.tempo === right.tempo && BalconyBand.VOICES.every((voice) => left.song[voice].every((on, index) => on === right.song[voice][index])); }
     function createHistory(song, tempo) { return { past: [], present: { song: cloneSong(song), tempo }, future: [] }; }
     BalconyBand.createHistory = createHistory;

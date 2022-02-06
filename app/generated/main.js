@@ -5,6 +5,9 @@ const muted = BalconyBand.emptyMutes();
 const velocities = { kick: 100, snare: 100, hat: 100 };
 let tempo = 96;
 let swing = 0;
+let countInBars = 0;
+let countingIn = false;
+let countInRemaining = 0;
 let running = false;
 let step = 0;
 let timer;
@@ -62,8 +65,8 @@ function draw() {
     $('swing-value').textContent = `${swing}%`;
     $('swing').value = String(swing);
     $('swing').setAttribute('aria-valuenow', String(swing));
-    $('transport').textContent = running ? 'Stop groove' : 'Start groove';
-    document.querySelectorAll('[data-step]').forEach((button) => button.classList.toggle('current', running && Number(button.dataset.step) === step));
+    $('transport').textContent = countingIn ? 'Stop count-in' : (running ? 'Stop groove' : 'Start groove');
+    document.querySelectorAll('[data-step]').forEach((button) => button.classList.toggle('current', running && !countingIn && Number(button.dataset.step) === step));
     document.querySelectorAll('[data-voice][data-step]').forEach((button) => { const on = song[button.dataset.voice][Number(button.dataset.step)]; button.classList.toggle('on', on); button.setAttribute('aria-pressed', String(on)); });
     document.querySelectorAll('[data-mute]').forEach((button) => { const voice = button.dataset.mute; const isMuted = muted[voice]; button.setAttribute('aria-pressed', String(isMuted)); button.setAttribute('aria-label', `${isMuted ? 'Unmute' : 'Mute'} ${labels[voice].toLowerCase()}`); button.textContent = isMuted ? 'MUTED' : 'LIVE'; button.classList.toggle('muted', isMuted); });
     document.querySelectorAll('[data-velocity]').forEach((input) => { const voice = input.dataset.velocity; input.value = String(velocities[voice]); input.setAttribute('aria-valuenow', String(velocities[voice])); const output = document.querySelector(`[data-velocity-value="${voice}"]`); if (output)
@@ -144,6 +147,8 @@ function blip(kind, at) {
     source.start(at);
     source.stop(at + 0.12);
 }
+function countClick(at) { if (!audio)
+    return; const oscillator = audio.createOscillator(); const gain = audio.createGain(); oscillator.frequency.value = 880; gain.gain.setValueAtTime(0.0001, at); gain.gain.exponentialRampToValueAtTime(0.025, at + 0.003); gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.06); oscillator.connect(gain).connect(audio.destination); track(oscillator); oscillator.start(at); oscillator.stop(at + 0.07); }
 function tick() {
     if (!running)
         return;
@@ -151,12 +156,31 @@ function tick() {
         return;
     if (nextAudioTime < audio.currentTime - 0.1)
         nextAudioTime = audio.currentTime + 0.02;
+    if (countingIn && countInRemaining === 0) {
+        countingIn = false;
+        step = 0;
+        feedback.textContent = 'Balcony is live.';
+        draw();
+    }
+    if (countingIn) {
+        const totalBeats = BalconyBand.countInBeats(countInBars);
+        const elapsed = totalBeats - countInRemaining;
+        countClick(nextAudioTime);
+        feedback.textContent = `Count-in · bar ${Math.floor(elapsed / 4) + 1} of ${countInBars}, beat ${(elapsed % 4) + 1} of 4.`;
+        draw();
+        const advanced = BalconyBand.advanceCountIn(countInRemaining);
+        countInRemaining = advanced.remainingBeats;
+        nextAudioTime += BalconyBand.countInIntervalMs(tempo) / 1000;
+        timer = window.setTimeout(tick, Math.max(8, (nextAudioTime - audio.currentTime) * 1000));
+        return;
+    }
     if (BalconyBand.voiceScheduled(muted, 'kick', velocities.kick) && song.kick[step])
         blip('kick', nextAudioTime);
     if (BalconyBand.voiceScheduled(muted, 'snare', velocities.snare) && song.snare[step])
         blip('snare', nextAudioTime);
     if (BalconyBand.voiceScheduled(muted, 'hat', velocities.hat) && song.hat[step])
         blip('hat', nextAudioTime);
+    feedback.textContent = 'Balcony is live.';
     draw();
     nextAudioTime += BalconyBand.stepIntervalMs(tempo, step, swing) / 1000;
     step = (step + 1) % BalconyBand.STEP_COUNT;
@@ -170,9 +194,12 @@ async function start() { if (running || starting)
         return;
     running = true;
     starting = false;
+    countInBars = BalconyBand.validateCountInBars(Number($('count-in').value));
+    countInRemaining = BalconyBand.countInBeats(countInBars);
+    countingIn = countInRemaining > 0;
     step = 0;
     nextAudioTime = audio.currentTime + 0.02;
-    feedback.textContent = 'Balcony is live.';
+    feedback.textContent = countingIn ? `Count-in · ${countInBars} bars.` : 'Balcony is live.';
     tick();
 }
 catch (_error) {
@@ -181,7 +208,7 @@ catch (_error) {
         feedback.textContent = 'Audio could not start. Try again.';
     }
 } }
-function stop() { starting = false; generation++; running = false; if (timer !== undefined)
+function stop() { starting = false; generation++; running = false; countingIn = false; countInRemaining = 0; if (timer !== undefined)
     window.clearTimeout(timer); timer = undefined; activeNodes.forEach((node) => { try {
     node.stop();
 }
