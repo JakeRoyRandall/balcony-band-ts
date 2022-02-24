@@ -30,6 +30,12 @@ var BalconyBand;
     function metronomeBeat(step) { if (!Number.isInteger(step) || step < 0 || step >= BalconyBand.STEP_COUNT)
         throw new RangeError('metronome step must be 0..15'); return { quarter: step % 2 === 0, barStart: step === 0 || step === 8 }; }
     BalconyBand.metronomeBeat = metronomeBeat;
+    function tapTempo(intervals) { const valid = intervals.filter((interval) => Number.isFinite(interval) && interval >= 333 && interval <= 1000).slice(-5); if (valid.length === 0)
+        return null; const sorted = [...valid].sort((a, b) => a - b); const middle = sorted.length % 2 ? sorted[Math.floor(sorted.length / 2)] : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2; return Math.max(60, Math.min(180, Math.round(60000 / middle))); }
+    BalconyBand.tapTempo = tapTempo;
+    function tapTempoState(timestamps, now) { if (!Number.isFinite(now))
+        throw new RangeError('tap time must be finite'); let active = timestamps.length && now - timestamps[timestamps.length - 1] > 1500 ? [] : [...timestamps]; active.push(now); active = active.slice(-6); return { timestamps: active, bpm: tapTempo(active.slice(1).map((time, index) => time - active[index])) }; }
+    BalconyBand.tapTempoState = tapTempoState;
     function advanceCountIn(remainingBeats) { if (!Number.isInteger(remainingBeats) || remainingBeats < 0)
         throw new RangeError('remaining count-in beats must be nonnegative'); const remaining = Math.max(0, remainingBeats - 1); return { remainingBeats: remaining, complete: remaining === 0 }; }
     BalconyBand.advanceCountIn = advanceCountIn;

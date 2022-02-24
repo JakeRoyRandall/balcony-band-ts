@@ -17,6 +17,7 @@ let starting = false;
 let generation = 0;
 let nextAudioTime = 0;
 let uploadRequest = 0;
+let tapTimes = [];
 const activeNodes = new Set();
 const $ = (id) => document.getElementById(id);
 const feedback = $('feedback');
@@ -47,6 +48,13 @@ metronomeButton.type = 'button';
 metronomeButton.setAttribute('aria-pressed', 'false');
 metronomeButton.textContent = 'Metronome off';
 document.querySelector('.console-top').appendChild(metronomeButton);
+const tapButton = document.createElement('button');
+tapButton.id = 'tap-tempo';
+tapButton.className = 'transport';
+tapButton.type = 'button';
+tapButton.textContent = 'Tap tempo';
+tapButton.setAttribute('aria-label', 'Tap tempo twice or more to set BPM');
+document.querySelector('.console-top').appendChild(tapButton);
 const copyTools = document.createElement('div');
 copyTools.className = 'copy-tools';
 copyTools.innerHTML = '<label for="copy-source">COPY VOICE</label><select id="copy-source" aria-label="Copy source voice"><option value="kick">Kick</option><option value="snare">Snare</option><option value="hat">Hat</option></select><button id="copy" class="transport">Copy</button><span id="copied-label">Pattern clipboard: empty</span><label for="paste-target">PASTE TO</label><select id="paste-target" aria-label="Paste target voice"><option value="kick">Kick</option><option value="snare">Snare</option><option value="hat">Hat</option></select><button id="paste" class="transport" disabled>Paste</button><label for="transform-voice">EDIT VOICE</label><select id="transform-voice" aria-label="Edit target voice"><option value="kick">Kick</option><option value="snare">Snare</option><option value="hat">Hat</option></select><button id="invert" class="transport">Invert</button><button id="reverse" class="transport">Reverse</button></div>';
@@ -71,6 +79,8 @@ function restoreHistory(next, message) { if (next === editHistoryState)
     stop(); editHistoryState = next; applySnapshot(editHistoryState.present); feedback.textContent = message; draw(); }
 function draw() {
     $('tempo-value').textContent = `${tempo} BPM`;
+    $('tempo').value = String(tempo);
+    $('tempo').setAttribute('aria-valuenow', String(tempo));
     $('swing-value').textContent = `${swing}%`;
     const metronomeButton = $('metronome');
     metronomeButton.textContent = metronomeEnabled ? 'Metronome on' : 'Metronome off';
@@ -302,6 +312,10 @@ finally {
 $('tempo').addEventListener('input', (event) => { tempo = BalconyBand.validateTempo(Number(event.target.value)); editHistoryState = Object.assign(Object.assign({}, editHistoryState), { present: Object.assign(Object.assign({}, editHistoryState.present), { tempo }) }); draw(); });
 $('swing').addEventListener('input', (event) => { swing = BalconyBand.validateSwing(Number(event.target.value)); feedback.textContent = `Swing ${swing}%.`; draw(); });
 $('metronome').addEventListener('click', () => { metronomeEnabled = !metronomeEnabled; feedback.textContent = metronomeEnabled ? 'Metronome on: quarter-note balcony time.' : 'Metronome off.'; draw(); });
+$('tap-tempo').addEventListener('click', () => { const tapped = BalconyBand.tapTempoState(tapTimes, performance.now()); tapTimes = tapped.timestamps; if (tapped.bpm === null) {
+    feedback.textContent = 'Tap tempo: tap once more to set the groove.';
+    return;
+} tempo = tapped.bpm; editHistoryState = Object.assign(Object.assign({}, editHistoryState), { present: Object.assign(Object.assign({}, editHistoryState.present), { tempo }) }); feedback.textContent = `Tap tempo set to ${tempo} BPM.`; draw(); });
 $('euclidean-generate').addEventListener('click', () => { try {
     const voice = $('euclidean-voice').value;
     const pulses = $('euclidean-pulses').valueAsNumber;
