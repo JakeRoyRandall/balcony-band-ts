@@ -5,6 +5,10 @@ var BalconyBand;
     BalconyBand.VOICES = ['kick', 'snare', 'hat'];
     function emptyMutes() { return { kick: false, snare: false, hat: false }; }
     BalconyBand.emptyMutes = emptyMutes;
+    function emptySolos() { return { kick: false, snare: false, hat: false }; }
+    BalconyBand.emptySolos = emptySolos;
+    function toggleSolo(solo, voice) { return Object.assign(Object.assign({}, solo), { [voice]: !solo[voice] }); }
+    BalconyBand.toggleSolo = toggleSolo;
     function defaultMixerSettings() { return { swing: 0, countInBars: 0, metronome: false, muted: emptyMutes(), velocities: { kick: 100, snare: 100, hat: 100 } }; }
     BalconyBand.defaultMixerSettings = defaultMixerSettings;
     function toggleMute(muted, voice) { return Object.assign(Object.assign({}, muted), { [voice]: !muted[voice] }); }
@@ -17,7 +21,7 @@ var BalconyBand;
     function velocityGain(baseGain, velocity) { if (!Number.isFinite(baseGain) || baseGain < 0)
         throw new RangeError('base gain must be nonnegative'); return baseGain * validateVelocity(velocity) / 100; }
     BalconyBand.velocityGain = velocityGain;
-    function voiceScheduled(muted, voice, velocity) { return voiceAudible(muted, voice) && validateVelocity(velocity) > 0; }
+    function voiceScheduled(muted, voice, velocity, solo = emptySolos()) { const anySolo = BalconyBand.VOICES.some((candidate) => solo[candidate]); return voiceAudible(muted, voice) && (!anySolo || solo[voice]) && validateVelocity(velocity) > 0; }
     BalconyBand.voiceScheduled = voiceScheduled;
     function validateSwing(swing) { if (!Number.isFinite(swing) || swing < 0 || swing > 45)
         throw new RangeError('swing must be 0..45'); return Math.round(swing); }

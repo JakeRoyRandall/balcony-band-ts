@@ -2,6 +2,7 @@ namespace BalconyBand {
   export type Pattern = boolean[];
   export type Song = { kick: Pattern; snare: Pattern; hat: Pattern };
   export type MuteState = Record<typeof VOICES[number], boolean>;
+  export type SoloState = Record<typeof VOICES[number], boolean>;
   export type PatternSnapshot = { song: Song; tempo: number };
   export type HistoryState = { past: PatternSnapshot[]; present: PatternSnapshot; future: PatternSnapshot[] };
   export type SaveSlot = { schema: 1; name: string; tempo: number; song: Song };
@@ -13,12 +14,14 @@ namespace BalconyBand {
   export const STEP_COUNT = 16;
   export const VOICES = ['kick', 'snare', 'hat'] as const;
   export function emptyMutes(): MuteState { return { kick: false, snare: false, hat: false }; }
+  export function emptySolos(): SoloState { return { kick: false, snare: false, hat: false }; }
+  export function toggleSolo(solo: SoloState, voice: typeof VOICES[number]): SoloState { return { ...solo, [voice]: !solo[voice] }; }
   export function defaultMixerSettings(): { swing: number; countInBars: number; metronome: boolean; muted: MuteState; velocities: VelocityState } { return { swing: 0, countInBars: 0, metronome: false, muted: emptyMutes(), velocities: { kick: 100, snare: 100, hat: 100 } }; }
   export function toggleMute(muted: MuteState, voice: typeof VOICES[number]): MuteState { return { ...muted, [voice]: !muted[voice] }; }
   export function voiceAudible(muted: MuteState, voice: typeof VOICES[number]): boolean { return !muted[voice]; }
   export function validateVelocity(velocity: number): number { if (!Number.isFinite(velocity) || velocity < 0 || velocity > 100) throw new RangeError('velocity must be 0..100'); return Math.round(velocity); }
   export function velocityGain(baseGain: number, velocity: number): number { if (!Number.isFinite(baseGain) || baseGain < 0) throw new RangeError('base gain must be nonnegative'); return baseGain * validateVelocity(velocity) / 100; }
-  export function voiceScheduled(muted: MuteState, voice: typeof VOICES[number], velocity: number): boolean { return voiceAudible(muted, voice) && validateVelocity(velocity) > 0; }
+  export function voiceScheduled(muted: MuteState, voice: typeof VOICES[number], velocity: number, solo: SoloState = emptySolos()): boolean { const anySolo = VOICES.some((candidate) => solo[candidate]); return voiceAudible(muted, voice) && (!anySolo || solo[voice]) && validateVelocity(velocity) > 0; }
   export function validateSwing(swing: number): number { if (!Number.isFinite(swing) || swing < 0 || swing > 45) throw new RangeError('swing must be 0..45'); return Math.round(swing); }
   export function validateCountInBars(bars: number): number { if (!Number.isInteger(bars) || bars < 0 || bars > 2) throw new RangeError('count-in must be 0..2 bars'); return bars; }
   export function countInBeats(bars: number): number { return validateCountInBars(bars) * 4; }

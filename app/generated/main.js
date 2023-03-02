@@ -2,6 +2,7 @@
 /// <reference path="./logic.ts" />
 const song = BalconyBand.emptySong();
 const muted = BalconyBand.emptyMutes();
+const solo = BalconyBand.emptySolos();
 const velocities = { kick: 100, snare: 100, hat: 100 };
 let tempo = 96;
 let swing = 0;
@@ -26,7 +27,7 @@ grid.setAttribute('aria-label', 'Sixteen step rhythm grid');
 const labels = { kick: 'KICK', snare: 'SNARE', hat: 'HAT' };
 const presetSelect = $('preset');
 presetSelect.innerHTML = '<option value="">Load preset…</option>' + Object.keys(BalconyBand.PRESETS).map((name) => `<option>${name}</option>`).join('');
-grid.innerHTML = '<div class="corner">VOICE / BAR 1 · BAR 2</div>' + Array.from({ length: BalconyBand.STEP_COUNT }, (_, index) => `<div class="step-head"><span>${Math.floor((index % 8) / 2) + 1}${index % 2 ? ' &' : ''}</span><small>BAR ${index < 8 ? 1 : 2}</small></div>`).join('') + Object.keys(labels).map((voice) => `<div class="voice-label"><span>${labels[voice]}</span><span class="voice-actions"><button type="button" class="rotate" data-rotate="left" data-rotate-voice="${voice}" aria-label="Shift ${labels[voice].toLowerCase()} left">←</button><button type="button" class="rotate" data-rotate="right" data-rotate-voice="${voice}" aria-label="Shift ${labels[voice].toLowerCase()} right">→</button><button type="button" class="mute" data-mute="${voice}" aria-label="Mute ${labels[voice].toLowerCase()}" aria-pressed="false">LIVE</button><input class="velocity" data-velocity="${voice}" type="range" min="0" max="100" value="100" aria-label="${labels[voice].toLowerCase()} velocity"><output class="velocity-value" data-velocity-value="${voice}">100%</output></span></div>${Array.from({ length: BalconyBand.STEP_COUNT }, (_, stepIndex) => `<button type="button" role="gridcell" data-voice="${voice}" data-step="${stepIndex}" aria-label="${labels[voice]} step ${stepIndex + 1}" aria-pressed="false" tabindex="-1"></button>`).join('')}`).join('');
+grid.innerHTML = '<div class="corner">VOICE / BAR 1 · BAR 2</div>' + Array.from({ length: BalconyBand.STEP_COUNT }, (_, index) => `<div class="step-head"><span>${Math.floor((index % 8) / 2) + 1}${index % 2 ? ' &' : ''}</span><small>BAR ${index < 8 ? 1 : 2}</small></div>`).join('') + Object.keys(labels).map((voice) => `<div class="voice-label"><span>${labels[voice]}</span><span class="voice-actions"><button type="button" class="rotate" data-rotate="left" data-rotate-voice="${voice}" aria-label="Shift ${labels[voice].toLowerCase()} left">←</button><button type="button" class="rotate" data-rotate="right" data-rotate-voice="${voice}" aria-label="Shift ${labels[voice].toLowerCase()} right">→</button><button type="button" class="mute" data-mute="${voice}" aria-label="Mute ${labels[voice].toLowerCase()}" aria-pressed="false">LIVE</button><button type="button" class="solo" data-solo="${voice}" aria-label="Solo ${labels[voice].toLowerCase()}" aria-pressed="false">SOLO</button><input class="velocity" data-velocity="${voice}" type="range" min="0" max="100" value="100" aria-label="${labels[voice].toLowerCase()} velocity"><output class="velocity-value" data-velocity-value="${voice}">100%</output></span></div>${Array.from({ length: BalconyBand.STEP_COUNT }, (_, stepIndex) => `<button type="button" role="gridcell" data-voice="${voice}" data-step="${stepIndex}" aria-label="${labels[voice]} step ${stepIndex + 1}" aria-pressed="false" tabindex="-1"></button>`).join('')}`).join('');
 let focusRow = 0;
 let focusColumn = 0;
 function focusCell(row, column, moveFocus) {
@@ -98,6 +99,7 @@ function draw() {
     document.querySelectorAll('[data-step]').forEach((button) => button.classList.toggle('current', running && !countingIn && Number(button.dataset.step) === step));
     document.querySelectorAll('[data-voice][data-step]').forEach((button) => { const on = song[button.dataset.voice][Number(button.dataset.step)]; button.classList.toggle('on', on); button.setAttribute('aria-pressed', String(on)); });
     document.querySelectorAll('[data-mute]').forEach((button) => { const voice = button.dataset.mute; const isMuted = muted[voice]; button.setAttribute('aria-pressed', String(isMuted)); button.setAttribute('aria-label', `${isMuted ? 'Unmute' : 'Mute'} ${labels[voice].toLowerCase()}`); button.textContent = isMuted ? 'MUTED' : 'LIVE'; button.classList.toggle('muted', isMuted); });
+    document.querySelectorAll('[data-solo]').forEach((button) => { const voice = button.dataset.solo; const isSolo = solo[voice]; button.setAttribute('aria-pressed', String(isSolo)); button.setAttribute('aria-label', `${isSolo ? 'Unsolo' : 'Solo'} ${labels[voice].toLowerCase()}`); button.textContent = isSolo ? 'SOLO ON' : 'SOLO'; button.classList.toggle('active', isSolo); });
     document.querySelectorAll('[data-velocity]').forEach((input) => { const voice = input.dataset.velocity; input.value = String(velocities[voice]); input.setAttribute('aria-valuenow', String(velocities[voice])); const output = document.querySelector(`[data-velocity-value="${voice}"]`); if (output)
         output.value = `${velocities[voice]}%`; });
     const report = BalconyBand.analyzeSong(song);
@@ -208,11 +210,11 @@ function tick() {
     const beat = BalconyBand.metronomeBeat(step);
     if (metronomeEnabled && beat.quarter)
         metronomeClick(nextAudioTime, beat.barStart);
-    if (BalconyBand.voiceScheduled(muted, 'kick', velocities.kick) && song.kick[step])
+    if (BalconyBand.voiceScheduled(muted, 'kick', velocities.kick, solo) && song.kick[step])
         blip('kick', nextAudioTime);
-    if (BalconyBand.voiceScheduled(muted, 'snare', velocities.snare) && song.snare[step])
+    if (BalconyBand.voiceScheduled(muted, 'snare', velocities.snare, solo) && song.snare[step])
         blip('snare', nextAudioTime);
-    if (BalconyBand.voiceScheduled(muted, 'hat', velocities.hat) && song.hat[step])
+    if (BalconyBand.voiceScheduled(muted, 'hat', velocities.hat, solo) && song.hat[step])
         blip('hat', nextAudioTime);
     feedback.textContent = 'Balcony is live.';
     draw();
@@ -319,12 +321,13 @@ finally {
 $('tempo').addEventListener('input', (event) => { tempo = BalconyBand.validateTempo(Number(event.target.value)); editHistoryState = Object.assign(Object.assign({}, editHistoryState), { present: Object.assign(Object.assign({}, editHistoryState.present), { tempo }) }); draw(); });
 $('swing').addEventListener('input', (event) => { swing = BalconyBand.validateSwing(Number(event.target.value)); feedback.textContent = `Swing ${swing}%.`; draw(); });
 $('metronome').addEventListener('click', () => { metronomeEnabled = !metronomeEnabled; feedback.textContent = metronomeEnabled ? 'Metronome on: quarter-note balcony time.' : 'Metronome off.'; draw(); });
+$('reset-mixer').addEventListener('click', () => { if (running || starting)
+    stop(); const defaults = BalconyBand.defaultMixerSettings(); Object.assign(muted, defaults.muted); Object.assign(solo, BalconyBand.emptySolos()); Object.assign(velocities, defaults.velocities); swing = defaults.swing; countInBars = defaults.countInBars; metronomeEnabled = defaults.metronome; $('count-in').value = String(countInBars); feedback.textContent = 'Mixer reset. Pattern, tempo, and saved arrangements are unchanged.'; draw(); });
 $('tap-tempo').addEventListener('click', () => { const tapped = BalconyBand.tapTempoState(tapTimes, performance.now()); tapTimes = tapped.timestamps; if (tapped.bpm === null) {
     feedback.textContent = 'Tap tempo: tap once more to set the groove.';
     return;
 } tempo = tapped.bpm; editHistoryState = Object.assign(Object.assign({}, editHistoryState), { present: Object.assign(Object.assign({}, editHistoryState.present), { tempo }) }); feedback.textContent = `Tap tempo set to ${tempo} BPM.`; draw(); });
-$('reset-mixer').addEventListener('click', () => { if (running || starting)
-    stop(); const defaults = BalconyBand.defaultMixerSettings(); Object.assign(muted, defaults.muted); Object.assign(velocities, defaults.velocities); swing = defaults.swing; countInBars = defaults.countInBars; metronomeEnabled = defaults.metronome; $('count-in').value = String(countInBars); feedback.textContent = 'Mixer reset. Pattern, tempo, and saved arrangements are unchanged.'; draw(); });
+document.querySelectorAll('[data-solo]').forEach((button) => button.addEventListener('click', () => { const voice = button.dataset.solo; const next = BalconyBand.toggleSolo(solo, voice); Object.assign(solo, next); feedback.textContent = solo[voice] ? `${labels[voice]} soloed.` : `${labels[voice]} solo cleared.`; draw(); }));
 $('euclidean-generate').addEventListener('click', () => { try {
     const voice = $('euclidean-voice').value;
     const pulses = $('euclidean-pulses').valueAsNumber;

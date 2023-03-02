@@ -4,6 +4,7 @@ const song = band.emptySong();
 const mutes = band.emptyMutes();
 assert.equal(band.voiceAudible(mutes, 'kick'), true);
 assert.deepEqual(band.defaultMixerSettings(), {swing: 0, countInBars: 0, metronome: false, muted: {kick: false, snare: false, hat: false}, velocities: {kick: 100, snare: 100, hat: 100}});
+assert.deepEqual(band.emptySolos(), {kick: false, snare: false, hat: false}); assert.equal(band.voiceScheduled(mutes, 'kick', 100, {kick: true, snare: false, hat: false}), true); assert.equal(band.voiceScheduled(mutes, 'snare', 100, {kick: true, snare: false, hat: false}), false); assert.equal(band.voiceScheduled({...mutes, kick: true}, 'kick', 100, {kick: true, snare: false, hat: false}), false); assert.deepEqual(band.toggleSolo(band.emptySolos(), 'hat'), {kick: false, snare: false, hat: true});
 assert.equal(band.validateVelocity(100), 100); assert.equal(band.validateVelocity(0), 0); assert.equal(band.validateVelocity(42.6), 43);
 assert.equal(band.velocityGain(0.16, 100), 0.16); assert.equal(band.velocityGain(0.16, 0), 0); assert.equal(band.velocityGain(0.16, 50), 0.08);
 assert.throws(() => band.validateVelocity(-1), /0..100/); assert.throws(() => band.validateVelocity(101), /0..100/); assert.throws(() => band.validateVelocity(Infinity), /0..100/); assert.throws(() => band.velocityGain(-0.1, 100), /nonnegative/);
