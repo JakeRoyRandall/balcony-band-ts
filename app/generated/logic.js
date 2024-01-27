@@ -1,11 +1,12 @@
 "use strict";
 var BalconyBand;
 (function (BalconyBand) {
+    BalconyBand.STEP_COUNT = 16;
     BalconyBand.VOICES = ['kick', 'snare', 'hat'];
     BalconyBand.PRESETS = {
-        'Quiet Neighbour': { tempo: 72, song: { kick: [true, false, false, false, true, false, false, false], snare: Array(8).fill(false), hat: [false, false, true, false, false, false, true, false] } },
-        'Saucepan Parade': { tempo: 112, song: { kick: [true, false, true, false, true, false, true, false], snare: [false, false, true, false, false, false, true, false], hat: Array(8).fill(true) } },
-        'Last Call Clap': { tempo: 128, song: { kick: [true, false, false, true, true, false, false, false], snare: [false, false, true, false, false, false, true, false], hat: [true, false, true, false, true, false, true, false] } }
+        'Quiet Neighbour': { tempo: 72, song: { kick: [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false], snare: Array(BalconyBand.STEP_COUNT).fill(false), hat: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false] } },
+        'Saucepan Parade': { tempo: 112, song: { kick: [true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false], snare: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false], hat: Array(BalconyBand.STEP_COUNT).fill(true) } },
+        'Last Call Clap': { tempo: 128, song: { kick: [true, false, false, true, true, false, false, false, true, false, false, true, true, false, false, false], snare: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false], hat: [true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false] } }
     };
     function cloneSong(source) { return { kick: [...source.kick], snare: [...source.snare], hat: [...source.hat] }; }
     BalconyBand.cloneSong = cloneSong;
@@ -32,20 +33,38 @@ var BalconyBand;
             throw new TypeError('pattern tempo must be an integer');
         const song = { kick: data.song && data.song.kick, snare: data.song && data.song.snare, hat: data.song && data.song.hat };
         for (const voice of BalconyBand.VOICES) {
-            if (!Array.isArray(song[voice]) || song[voice].length !== 8 || song[voice].some((value) => typeof value !== 'boolean'))
-                throw new TypeError('each voice must be eight booleans');
+            if (!Array.isArray(song[voice]) || song[voice].length !== BalconyBand.STEP_COUNT || song[voice].some((value) => typeof value !== 'boolean'))
+                throw new TypeError('each voice must be sixteen booleans');
         }
         return { tempo: validateTempo(data.tempo), song: cloneSong(song) };
     }
     BalconyBand.importPattern = importPattern;
-    function emptySong() { return { kick: Array(8).fill(false), snare: Array(8).fill(false), hat: Array(8).fill(false) }; }
+    function emptySong() { return { kick: Array(BalconyBand.STEP_COUNT).fill(false), snare: Array(BalconyBand.STEP_COUNT).fill(false), hat: Array(BalconyBand.STEP_COUNT).fill(false) }; }
     BalconyBand.emptySong = emptySong;
     function toggle(song, voice, step) {
-        if (!Number.isInteger(step) || step < 0 || step > 7)
-            throw new RangeError('step must be 0..7');
+        if (!Number.isInteger(step) || step < 0 || step >= BalconyBand.STEP_COUNT)
+            throw new RangeError(`step must be 0..${BalconyBand.STEP_COUNT - 1}`);
         return Object.assign(Object.assign({}, song), { [voice]: song[voice].map((on, index) => index === step ? !on : on) });
     }
     BalconyBand.toggle = toggle;
+    function navigateGrid(row, column, key, rows = 3, columns = BalconyBand.STEP_COUNT) {
+        if (!Number.isInteger(row) || !Number.isInteger(column) || row < 0 || row >= rows || column < 0 || column >= columns)
+            throw new RangeError('grid position is outside the grid');
+        if (key === 'ArrowLeft')
+            return { row, column: Math.max(0, column - 1) };
+        if (key === 'ArrowRight')
+            return { row, column: Math.min(columns - 1, column + 1) };
+        if (key === 'ArrowUp')
+            return { row: Math.max(0, row - 1), column };
+        if (key === 'ArrowDown')
+            return { row: Math.min(rows - 1, row + 1), column };
+        if (key === 'Home')
+            return { row, column: 0 };
+        if (key === 'End')
+            return { row, column: columns - 1 };
+        return { row, column };
+    }
+    BalconyBand.navigateGrid = navigateGrid;
     function validateTempo(tempo) { if (!Number.isFinite(tempo) || tempo < 60 || tempo > 180)
         throw new RangeError('tempo must be 60..180'); return Math.round(tempo); }
     BalconyBand.validateTempo = validateTempo;

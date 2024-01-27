@@ -12,6 +12,20 @@ let nextAudioTime = 0;
 const activeNodes = new Set();
 const $ = (id) => document.getElementById(id);
 const feedback = $('feedback');
+const grid = document.querySelector('.grid');
+grid.setAttribute('aria-label', 'Sixteen step rhythm grid');
+const labels = { kick: 'KICK', snare: 'SNARE', hat: 'HAT' };
+grid.innerHTML = '<div class="corner">VOICE / STEP</div>' + Array.from({ length: BalconyBand.STEP_COUNT }, (_, index) => `<div class="step-head">${index + 1}</div>`).join('') + Object.keys(labels).map((voice) => `<div class="voice">${labels[voice]}</div>${Array.from({ length: BalconyBand.STEP_COUNT }, (_, stepIndex) => `<button type="button" role="gridcell" data-voice="${voice}" data-step="${stepIndex}" aria-label="${labels[voice]} step ${stepIndex + 1}" aria-pressed="false" tabindex="-1"></button>`).join('')}`).join('');
+let focusRow = 0;
+let focusColumn = 0;
+function focusCell(row, column, moveFocus) {
+    var _a;
+    focusRow = row;
+    focusColumn = column;
+    document.querySelectorAll('[data-voice][data-step]').forEach((button) => button.tabIndex = Number(button.dataset.step) === focusColumn && button.dataset.voice === BalconyBand.VOICES[focusRow] ? 0 : -1);
+    if (moveFocus)
+        (_a = document.querySelector(`[data-voice="${BalconyBand.VOICES[row]}"][data-step="${column}"]`)) === null || _a === void 0 ? void 0 : _a.focus();
+}
 const patternTools = document.createElement('div');
 patternTools.className = 'pattern-tools';
 patternTools.innerHTML = '<textarea id="pattern-json" aria-label="Pattern JSON" rows="3" placeholder="Pattern JSON lives here"></textarea><button id="export" class="transport">Export JSON</button><button id="import" class="transport">Import JSON</button>';
@@ -75,7 +89,7 @@ function tick() {
     if (song.hat[step])
         blip('hat', nextAudioTime);
     draw();
-    step = (step + 1) % 8;
+    step = (step + 1) % BalconyBand.STEP_COUNT;
     nextAudioTime += BalconyBand.stepMs(tempo) / 1000;
     timer = window.setTimeout(tick, Math.max(8, (nextAudioTime - audio.currentTime) * 1000));
 }
@@ -104,7 +118,22 @@ function stop() { starting = false; generation++; running = false; if (timer !==
 }
 catch (_error) { /* already ended */ } }); activeNodes.clear(); if (audio)
     void audio.suspend(); feedback.textContent = 'Paused. The upstairs neighbour approves.'; draw(); }
-document.querySelectorAll('[data-voice][data-step]').forEach((button) => button.addEventListener('click', () => { const voice = button.dataset.voice; song[voice] = BalconyBand.toggle(song, voice, Number(button.dataset.step))[voice]; draw(); }));
+document.querySelectorAll('[data-voice][data-step]').forEach((button) => {
+    button.addEventListener('click', () => { const voice = button.dataset.voice; const column = Number(button.dataset.step); focusCell(BalconyBand.VOICES.indexOf(voice), column, false); song[voice] = BalconyBand.toggle(song, voice, column)[voice]; draw(); });
+    button.addEventListener('keydown', (event) => {
+        const key = event.key;
+        if (key === ' ' || key === 'Enter') {
+            event.preventDefault();
+            button.click();
+            return;
+        }
+        if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(key))
+            return;
+        event.preventDefault();
+        const next = BalconyBand.navigateGrid(focusRow, focusColumn, key);
+        focusCell(next.row, next.column, true);
+    });
+});
 $('transport').addEventListener('click', () => { if (running || starting)
     stop();
 else
@@ -125,4 +154,5 @@ catch (error) {
     feedback.textContent = `Import failed: ${error.message}`;
 } });
 $('tempo').addEventListener('input', (event) => { tempo = BalconyBand.validateTempo(Number(event.target.value)); draw(); });
+focusCell(0, 0, false);
 draw();
