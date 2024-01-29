@@ -29,19 +29,27 @@ function focusCell(row, column, moveFocus) {
 }
 const patternTools = document.createElement('div');
 patternTools.className = 'pattern-tools';
-patternTools.innerHTML = '<textarea id="pattern-json" aria-label="Pattern JSON" rows="3" placeholder="Pattern JSON lives here"></textarea><button id="export" class="transport">Export JSON</button><button id="import" class="transport">Import JSON</button>';
+patternTools.innerHTML = '<textarea id="pattern-json" aria-label="Pattern JSON" rows="3" placeholder="Pattern JSON lives here"></textarea><button id="export" class="transport">Export JSON</button><button id="import" class="transport">Import JSON</button><button id="undo" class="transport" disabled>Undo</button><button id="redo" class="transport" disabled>Redo</button>';
 feedback.parentElement.insertBefore(patternTools, feedback);
-function changePattern(next, nextTempo) { if (running || starting)
-    stop(); Object.assign(song, BalconyBand.cloneSong(next)); if (nextTempo !== undefined) {
-    tempo = BalconyBand.validateTempo(nextTempo);
-    $('tempo').value = String(tempo);
-} feedback.textContent = 'Pattern loaded. Press start when ready.'; draw(); }
+let editHistoryState = BalconyBand.createHistory(song, tempo);
+function applySnapshot(snapshot) { Object.assign(song, BalconyBand.cloneSong(snapshot.song)); tempo = BalconyBand.validateTempo(snapshot.tempo); $('tempo').value = String(tempo); }
+function commitPattern(next, nextTempo, message, stopPlayback = true) { const updated = BalconyBand.editHistory(editHistoryState, { song: next, tempo: nextTempo }); if (updated === editHistoryState) {
+    draw();
+    return;
+} if (stopPlayback && (running || starting))
+    stop(); editHistoryState = updated; applySnapshot(editHistoryState.present); feedback.textContent = message; draw(); }
+function changePattern(next, nextTempo) { commitPattern(next, nextTempo === undefined ? tempo : BalconyBand.validateTempo(nextTempo), 'Pattern loaded. Press start when ready.'); }
+function restoreHistory(next, message) { if (next === editHistoryState)
+    return; if (running || starting)
+    stop(); editHistoryState = next; applySnapshot(editHistoryState.present); feedback.textContent = message; draw(); }
 function draw() {
     $('tempo-value').textContent = `${tempo} BPM`;
     $('transport').textContent = running ? 'Stop groove' : 'Start groove';
     document.querySelectorAll('[data-step]').forEach((button) => button.classList.toggle('current', running && Number(button.dataset.step) === step));
     document.querySelectorAll('[data-voice][data-step]').forEach((button) => { const on = song[button.dataset.voice][Number(button.dataset.step)]; button.classList.toggle('on', on); button.setAttribute('aria-pressed', String(on)); });
     document.querySelectorAll('[data-mute]').forEach((button) => { const voice = button.dataset.mute; const isMuted = muted[voice]; button.setAttribute('aria-pressed', String(isMuted)); button.setAttribute('aria-label', `${isMuted ? 'Unmute' : 'Mute'} ${labels[voice].toLowerCase()}`); button.textContent = isMuted ? 'MUTED' : 'LIVE'; button.classList.toggle('muted', isMuted); });
+    $('undo').disabled = editHistoryState.past.length === 0;
+    $('redo').disabled = editHistoryState.future.length === 0;
 }
 function track(node) { activeNodes.add(node); node.addEventListener('ended', () => activeNodes.delete(node), { once: true }); }
 function blip(kind, at) {
@@ -121,7 +129,7 @@ function stop() { starting = false; generation++; running = false; if (timer !==
 catch (_error) { /* already ended */ } }); activeNodes.clear(); if (audio)
     void audio.suspend(); feedback.textContent = 'Paused. The upstairs neighbour approves.'; draw(); }
 document.querySelectorAll('[data-voice][data-step]').forEach((button) => {
-    button.addEventListener('click', () => { const voice = button.dataset.voice; const column = Number(button.dataset.step); focusCell(BalconyBand.VOICES.indexOf(voice), column, false); song[voice] = BalconyBand.toggle(song, voice, column)[voice]; draw(); });
+    button.addEventListener('click', () => { const voice = button.dataset.voice; const column = Number(button.dataset.step); focusCell(BalconyBand.VOICES.indexOf(voice), column, false); const next = BalconyBand.cloneSong(song); next[voice] = BalconyBand.toggle(song, voice, column)[voice]; commitPattern(next, tempo, `${labels[voice]} step ${column + 1} changed.`, false); });
     button.addEventListener('keydown', (event) => {
         const key = event.key;
         if (key === ' ' || key === 'Enter') {
@@ -137,6 +145,8 @@ document.querySelectorAll('[data-voice][data-step]').forEach((button) => {
     });
 });
 document.querySelectorAll('[data-mute]').forEach((button) => button.addEventListener('click', () => { const voice = button.dataset.mute; const next = BalconyBand.toggleMute(muted, voice); Object.assign(muted, next); feedback.textContent = muted[voice] ? `${labels[voice]} muted for audition.` : `${labels[voice]} back in the mix.`; draw(); }));
+$('undo').addEventListener('click', () => restoreHistory(BalconyBand.undoHistory(editHistoryState), 'Undid pattern edit.'));
+$('redo').addEventListener('click', () => restoreHistory(BalconyBand.redoHistory(editHistoryState), 'Redid pattern edit.'));
 $('transport').addEventListener('click', () => { if (running || starting)
     stop();
 else
@@ -156,6 +166,6 @@ $('import').addEventListener('click', () => { try {
 catch (error) {
     feedback.textContent = `Import failed: ${error.message}`;
 } });
-$('tempo').addEventListener('input', (event) => { tempo = BalconyBand.validateTempo(Number(event.target.value)); draw(); });
+$('tempo').addEventListener('input', (event) => { tempo = BalconyBand.validateTempo(Number(event.target.value)); editHistoryState = Object.assign(Object.assign({}, editHistoryState), { present: Object.assign(Object.assign({}, editHistoryState.present), { tempo }) }); draw(); });
 focusCell(0, 0, false);
 draw();

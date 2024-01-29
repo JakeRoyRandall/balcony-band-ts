@@ -9,6 +9,29 @@ var BalconyBand;
     BalconyBand.toggleMute = toggleMute;
     function voiceAudible(muted, voice) { return !muted[voice]; }
     BalconyBand.voiceAudible = voiceAudible;
+    function sameSnapshot(left, right) { return left.tempo === right.tempo && BalconyBand.VOICES.every((voice) => left.song[voice].every((on, index) => on === right.song[voice][index])); }
+    function createHistory(song, tempo) { return { past: [], present: { song: cloneSong(song), tempo }, future: [] }; }
+    BalconyBand.createHistory = createHistory;
+    function editHistory(history, next) {
+        if (sameSnapshot(history.present, next))
+            return history;
+        return { past: [...history.past, { song: cloneSong(history.present.song), tempo: history.present.tempo }].slice(-50), present: { song: cloneSong(next.song), tempo: next.tempo }, future: [] };
+    }
+    BalconyBand.editHistory = editHistory;
+    function undoHistory(history) {
+        if (history.past.length === 0)
+            return history;
+        const previous = history.past[history.past.length - 1];
+        return { past: history.past.slice(0, -1), present: { song: cloneSong(previous.song), tempo: previous.tempo }, future: [{ song: cloneSong(history.present.song), tempo: history.present.tempo }, ...history.future] };
+    }
+    BalconyBand.undoHistory = undoHistory;
+    function redoHistory(history) {
+        if (history.future.length === 0)
+            return history;
+        const next = history.future[0];
+        return { past: [...history.past, { song: cloneSong(history.present.song), tempo: history.present.tempo }].slice(-50), present: { song: cloneSong(next.song), tempo: next.tempo }, future: history.future.slice(1) };
+    }
+    BalconyBand.redoHistory = redoHistory;
     BalconyBand.PRESETS = {
         'Quiet Neighbour': { tempo: 72, song: { kick: [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false], snare: Array(BalconyBand.STEP_COUNT).fill(false), hat: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false] } },
         'Saucepan Parade': { tempo: 112, song: { kick: [true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false], snare: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false], hat: Array(BalconyBand.STEP_COUNT).fill(true) } },

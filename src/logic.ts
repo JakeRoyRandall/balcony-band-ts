@@ -2,11 +2,29 @@ namespace BalconyBand {
   export type Pattern = boolean[];
   export type Song = { kick: Pattern; snare: Pattern; hat: Pattern };
   export type MuteState = Record<typeof VOICES[number], boolean>;
+  export type PatternSnapshot = { song: Song; tempo: number };
+  export type HistoryState = { past: PatternSnapshot[]; present: PatternSnapshot; future: PatternSnapshot[] };
   export const STEP_COUNT = 16;
   export const VOICES = ['kick', 'snare', 'hat'] as const;
   export function emptyMutes(): MuteState { return { kick: false, snare: false, hat: false }; }
   export function toggleMute(muted: MuteState, voice: typeof VOICES[number]): MuteState { return { ...muted, [voice]: !muted[voice] }; }
   export function voiceAudible(muted: MuteState, voice: typeof VOICES[number]): boolean { return !muted[voice]; }
+  function sameSnapshot(left: PatternSnapshot, right: PatternSnapshot): boolean { return left.tempo === right.tempo && VOICES.every((voice) => left.song[voice].every((on, index) => on === right.song[voice][index])); }
+  export function createHistory(song: Song, tempo: number): HistoryState { return { past: [], present: { song: cloneSong(song), tempo }, future: [] }; }
+  export function editHistory(history: HistoryState, next: PatternSnapshot): HistoryState {
+    if (sameSnapshot(history.present, next)) return history;
+    return { past: [...history.past, { song: cloneSong(history.present.song), tempo: history.present.tempo }].slice(-50), present: { song: cloneSong(next.song), tempo: next.tempo }, future: [] };
+  }
+  export function undoHistory(history: HistoryState): HistoryState {
+    if (history.past.length === 0) return history;
+    const previous = history.past[history.past.length - 1];
+    return { past: history.past.slice(0, -1), present: { song: cloneSong(previous.song), tempo: previous.tempo }, future: [{ song: cloneSong(history.present.song), tempo: history.present.tempo }, ...history.future] };
+  }
+  export function redoHistory(history: HistoryState): HistoryState {
+    if (history.future.length === 0) return history;
+    const next = history.future[0];
+    return { past: [...history.past, { song: cloneSong(history.present.song), tempo: history.present.tempo }].slice(-50), present: { song: cloneSong(next.song), tempo: next.tempo }, future: history.future.slice(1) };
+  }
   export const PRESETS: Record<string, { tempo: number; song: Song }> = {
     'Quiet Neighbour': { tempo: 72, song: { kick: [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false], snare: Array(STEP_COUNT).fill(false), hat: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false] } },
     'Saucepan Parade': { tempo: 112, song: { kick: [true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false], snare: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false], hat: Array(STEP_COUNT).fill(true) } },
