@@ -4,6 +4,8 @@ namespace BalconyBand {
   export type MuteState = Record<typeof VOICES[number], boolean>;
   export type PatternSnapshot = { song: Song; tempo: number };
   export type HistoryState = { past: PatternSnapshot[]; present: PatternSnapshot; future: PatternSnapshot[] };
+  export type SaveSlot = { schema: 1; name: string; tempo: number; song: Song };
+  export type SaveCollection = { schema: 1; slots: Record<string, SaveSlot> };
   export const STEP_COUNT = 16;
   export const VOICES = ['kick', 'snare', 'hat'] as const;
   export function emptyMutes(): MuteState { return { kick: false, snare: false, hat: false }; }
@@ -42,6 +44,47 @@ namespace BalconyBand {
     const song: Song = { kick: data.song && data.song.kick, snare: data.song && data.song.snare, hat: data.song && data.song.hat };
     for (const voice of VOICES) { if (!Array.isArray(song[voice]) || song[voice].length !== STEP_COUNT || song[voice].some((value) => typeof value !== 'boolean')) throw new TypeError('each voice must be sixteen booleans'); }
     return { tempo: validateTempo(data.tempo), song: cloneSong(song) };
+  }
+  export function normalizeSaveName(raw: string): string {
+    if (typeof raw !== 'string') throw new TypeError('save name must be text');
+    const name = raw.trim();
+    if (name.length < 1 || name.length > 40) throw new RangeError('save name must be 1..40 characters');
+    return name;
+  }
+  export function exportSave(name: string, song: Song, tempo: number): string {
+    return JSON.stringify({ schema: 1, name: normalizeSaveName(name), tempo: validateTempo(tempo), song: cloneSong(song) });
+  }
+  export function importSave(raw: string): SaveSlot {
+    if (raw.length > 8192) throw new RangeError('save is limited to 8192 characters');
+    let data: any; try { data = JSON.parse(raw); } catch (_error) { throw new TypeError('save data is invalid'); }
+    if (!data || typeof data !== 'object' || Array.isArray(data) || Object.keys(data).sort().join(',') !== 'name,schema,song,tempo' || data.schema !== 1) throw new TypeError('save schema is invalid');
+    const imported = importPattern(JSON.stringify({ schema: 1, tempo: data.tempo, song: data.song }));
+    return { schema: 1, name: normalizeSaveName(data.name), tempo: imported.tempo, song: imported.song };
+  }
+  export function exportSaveCollection(slots: Record<string, SaveSlot>): string {
+    const names = Object.keys(slots);
+    if (names.length > 10) throw new RangeError('save limit is 10 slots');
+    const clean: Record<string, SaveSlot> = Object.create(null);
+    for (const key of names) {
+      const slot = importSave(exportSave(key, slots[key].song, slots[key].tempo));
+      if (slot.name !== key) throw new TypeError('save slot name mismatch');
+      clean[key] = slot;
+    }
+    return JSON.stringify({ schema: 1, slots: clean });
+  }
+  export function importSaveCollection(raw: string): SaveCollection {
+    if (raw.length > 65536) throw new RangeError('save library is too large');
+    let data: any; try { data = JSON.parse(raw); } catch (_error) { throw new TypeError('save library is invalid'); }
+    if (!data || typeof data !== 'object' || Array.isArray(data) || Object.keys(data).sort().join(',') !== 'schema,slots' || data.schema !== 1 || !data.slots || typeof data.slots !== 'object' || Array.isArray(data.slots)) throw new TypeError('save library schema is invalid');
+    const names = Object.keys(data.slots);
+    if (names.length > 10) throw new RangeError('save limit is 10 slots');
+    const slots: Record<string, SaveSlot> = Object.create(null);
+    for (const key of names) {
+      const slot = importSave(JSON.stringify(data.slots[key]));
+      if (slot.name !== key) throw new TypeError('save slot name mismatch');
+      slots[key] = slot;
+    }
+    return { schema: 1, slots };
   }
   export function emptySong(): Song { return { kick: Array(STEP_COUNT).fill(false), snare: Array(STEP_COUNT).fill(false), hat: Array(STEP_COUNT).fill(false) }; }
   export function toggle(song: Song, voice: keyof Song, step: number): Song {

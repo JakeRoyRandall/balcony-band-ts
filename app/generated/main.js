@@ -29,15 +29,16 @@ function focusCell(row, column, moveFocus) {
 }
 const patternTools = document.createElement('div');
 patternTools.className = 'pattern-tools';
-patternTools.innerHTML = '<textarea id="pattern-json" aria-label="Pattern JSON" rows="3" placeholder="Pattern JSON lives here"></textarea><button id="export" class="transport">Export JSON</button><button id="import" class="transport">Import JSON</button><button id="undo" class="transport" disabled>Undo</button><button id="redo" class="transport" disabled>Redo</button>';
+patternTools.innerHTML = '<textarea id="pattern-json" aria-label="Pattern JSON" rows="3" placeholder="Pattern JSON lives here"></textarea><button id="export" class="transport">Export JSON</button><button id="import" class="transport">Import JSON</button><button id="undo" class="transport" disabled>Undo</button><button id="redo" class="transport" disabled>Redo</button><div class="save-tools"><label for="save-name">SAVE NAME</label><input id="save-name" maxlength="40" placeholder="e.g. Tuesday kitchen" aria-label="Save name"><button id="save" class="transport">Save</button><select id="save-slot" aria-label="Saved pattern"><option value="">Choose saved pattern…</option></select><button id="load" class="transport">Load</button><button id="delete-save" class="transport">Delete</button></div>';
 feedback.parentElement.insertBefore(patternTools, feedback);
 let editHistoryState = BalconyBand.createHistory(song, tempo);
+const saveKey = 'balcony-band:saves:v1';
 function applySnapshot(snapshot) { Object.assign(song, BalconyBand.cloneSong(snapshot.song)); tempo = BalconyBand.validateTempo(snapshot.tempo); $('tempo').value = String(tempo); }
-function commitPattern(next, nextTempo, message, stopPlayback = true) { const updated = BalconyBand.editHistory(editHistoryState, { song: next, tempo: nextTempo }); if (updated === editHistoryState) {
+function commitPattern(next, nextTempo, message, stopPlayback = true) { const updated = BalconyBand.editHistory(editHistoryState, { song: next, tempo: nextTempo }); if (stopPlayback && (running || starting))
+    stop(); if (updated === editHistoryState) {
     draw();
     return;
-} if (stopPlayback && (running || starting))
-    stop(); editHistoryState = updated; applySnapshot(editHistoryState.present); feedback.textContent = message; draw(); }
+} editHistoryState = updated; applySnapshot(editHistoryState.present); feedback.textContent = message; draw(); }
 function changePattern(next, nextTempo) { commitPattern(next, nextTempo === undefined ? tempo : BalconyBand.validateTempo(nextTempo), 'Pattern loaded. Press start when ready.'); }
 function restoreHistory(next, message) { if (next === editHistoryState)
     return; if (running || starting)
@@ -50,6 +51,38 @@ function draw() {
     document.querySelectorAll('[data-mute]').forEach((button) => { const voice = button.dataset.mute; const isMuted = muted[voice]; button.setAttribute('aria-pressed', String(isMuted)); button.setAttribute('aria-label', `${isMuted ? 'Unmute' : 'Mute'} ${labels[voice].toLowerCase()}`); button.textContent = isMuted ? 'MUTED' : 'LIVE'; button.classList.toggle('muted', isMuted); });
     $('undo').disabled = editHistoryState.past.length === 0;
     $('redo').disabled = editHistoryState.future.length === 0;
+}
+function readSaves() {
+    try {
+        const raw = window.localStorage.getItem(saveKey);
+        return raw ? BalconyBand.importSaveCollection(raw).slots : Object.create(null);
+    }
+    catch (error) {
+        feedback.textContent = `Saved patterns unavailable: ${error.message}`;
+        return undefined;
+    }
+}
+function writeSaves(slots) {
+    try {
+        window.localStorage.setItem(saveKey, BalconyBand.exportSaveCollection(slots));
+        return true;
+    }
+    catch (error) {
+        feedback.textContent = `Could not save pattern: ${error.message}`;
+        return false;
+    }
+}
+function refreshSaves() {
+    const select = $('save-slot');
+    const current = select.value;
+    const slots = readSaves();
+    if (!slots) {
+        select.innerHTML = '<option value="">Saved patterns unavailable</option>';
+        return;
+    }
+    select.innerHTML = '<option value="">Choose saved pattern…</option>' + Object.keys(slots).sort((a, b) => a.localeCompare(b)).map((name) => `<option value="${name.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')}">${name.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</option>`).join('');
+    if (Object.prototype.hasOwnProperty.call(slots, current))
+        select.value = current;
 }
 function track(node) { activeNodes.add(node); node.addEventListener('ended', () => activeNodes.delete(node), { once: true }); }
 function blip(kind, at) {
@@ -168,5 +201,60 @@ catch (error) {
     feedback.textContent = `Import failed: ${error.message}`;
 } });
 $('tempo').addEventListener('input', (event) => { tempo = BalconyBand.validateTempo(Number(event.target.value)); editHistoryState = Object.assign(Object.assign({}, editHistoryState), { present: Object.assign(Object.assign({}, editHistoryState.present), { tempo }) }); draw(); });
+function selectedSaveName() { return BalconyBand.normalizeSaveName($('save-name').value); }
+function selectedSlotName() { return $('save-slot').value; }
+$('save').addEventListener('click', () => { try {
+    const name = selectedSaveName();
+    const slots = readSaves();
+    if (!slots)
+        return;
+    if (!Object.prototype.hasOwnProperty.call(slots, name) && Object.keys(slots).length >= 10)
+        throw new RangeError('save limit is 10 slots');
+    slots[name] = BalconyBand.importSave(BalconyBand.exportSave(name, song, tempo));
+    if (writeSaves(slots)) {
+        $('save-slot').value = name;
+        feedback.textContent = `Saved “${name}”.`;
+        refreshSaves();
+        $('save-slot').value = name;
+    }
+}
+catch (error) {
+    feedback.textContent = `Save failed: ${error.message}`;
+} });
+$('load').addEventListener('click', () => { try {
+    const name = selectedSlotName();
+    if (!name)
+        throw new RangeError('choose a saved pattern');
+    const slots = readSaves();
+    if (!slots)
+        return;
+    const slot = slots[name];
+    if (!slot)
+        throw new Error('saved pattern was not found');
+    changePattern(slot.song, slot.tempo);
+    feedback.textContent = `Loaded “${name}”.`;
+}
+catch (error) {
+    feedback.textContent = `Load failed: ${error.message}`;
+} });
+$('delete-save').addEventListener('click', () => { try {
+    const name = selectedSlotName();
+    if (!name)
+        throw new RangeError('choose a saved pattern');
+    const slots = readSaves();
+    if (!slots)
+        return;
+    if (!slots[name])
+        throw new Error('saved pattern was not found');
+    delete slots[name];
+    if (writeSaves(slots)) {
+        refreshSaves();
+        feedback.textContent = `Deleted “${name}”.`;
+    }
+}
+catch (error) {
+    feedback.textContent = `Delete failed: ${error.message}`;
+} });
 focusCell(0, 0, false);
+refreshSaves();
 draw();
