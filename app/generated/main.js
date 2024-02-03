@@ -4,6 +4,7 @@ const song = BalconyBand.emptySong();
 const muted = BalconyBand.emptyMutes();
 const velocities = { kick: 100, snare: 100, hat: 100 };
 let tempo = 96;
+let swing = 0;
 let running = false;
 let step = 0;
 let timer;
@@ -46,6 +47,9 @@ function restoreHistory(next, message) { if (next === editHistoryState)
     stop(); editHistoryState = next; applySnapshot(editHistoryState.present); feedback.textContent = message; draw(); }
 function draw() {
     $('tempo-value').textContent = `${tempo} BPM`;
+    $('swing-value').textContent = `${swing}%`;
+    $('swing').value = String(swing);
+    $('swing').setAttribute('aria-valuenow', String(swing));
     $('transport').textContent = running ? 'Stop groove' : 'Start groove';
     document.querySelectorAll('[data-step]').forEach((button) => button.classList.toggle('current', running && Number(button.dataset.step) === step));
     document.querySelectorAll('[data-voice][data-step]').forEach((button) => { const on = song[button.dataset.voice][Number(button.dataset.step)]; button.classList.toggle('on', on); button.setAttribute('aria-pressed', String(on)); });
@@ -138,8 +142,8 @@ function tick() {
     if (BalconyBand.voiceScheduled(muted, 'hat', velocities.hat) && song.hat[step])
         blip('hat', nextAudioTime);
     draw();
+    nextAudioTime += BalconyBand.stepIntervalMs(tempo, step, swing) / 1000;
     step = (step + 1) % BalconyBand.STEP_COUNT;
-    nextAudioTime += BalconyBand.stepMs(tempo) / 1000;
     timer = window.setTimeout(tick, Math.max(8, (nextAudioTime - audio.currentTime) * 1000));
 }
 async function start() { if (running || starting)
@@ -215,6 +219,7 @@ catch (error) {
     feedback.textContent = `Import failed: ${error.message}`;
 } });
 $('tempo').addEventListener('input', (event) => { tempo = BalconyBand.validateTempo(Number(event.target.value)); editHistoryState = Object.assign(Object.assign({}, editHistoryState), { present: Object.assign(Object.assign({}, editHistoryState.present), { tempo }) }); draw(); });
+$('swing').addEventListener('input', (event) => { swing = BalconyBand.validateSwing(Number(event.target.value)); feedback.textContent = `Swing ${swing}%.`; draw(); });
 function selectedSaveName() { return BalconyBand.normalizeSaveName($('save-name').value); }
 function selectedSlotName() { return $('save-slot').value; }
 $('save').addEventListener('click', () => { try {

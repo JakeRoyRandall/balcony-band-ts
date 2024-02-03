@@ -17,6 +17,9 @@ var BalconyBand;
     BalconyBand.velocityGain = velocityGain;
     function voiceScheduled(muted, voice, velocity) { return voiceAudible(muted, voice) && validateVelocity(velocity) > 0; }
     BalconyBand.voiceScheduled = voiceScheduled;
+    function validateSwing(swing) { if (!Number.isFinite(swing) || swing < 0 || swing > 45)
+        throw new RangeError('swing must be 0..45'); return Math.round(swing); }
+    BalconyBand.validateSwing = validateSwing;
     function sameSnapshot(left, right) { return left.tempo === right.tempo && BalconyBand.VOICES.every((voice) => left.song[voice].every((on, index) => on === right.song[voice][index])); }
     function createHistory(song, tempo) { return { past: [], present: { song: cloneSong(song), tempo }, future: [] }; }
     BalconyBand.createHistory = createHistory;
@@ -184,6 +187,9 @@ var BalconyBand;
     BalconyBand.validateTempo = validateTempo;
     function stepMs(tempo) { return 60000 / validateTempo(tempo) / 2; }
     BalconyBand.stepMs = stepMs;
+    function stepIntervalMs(tempo, step, swing) { if (!Number.isInteger(step) || step < 0)
+        throw new RangeError('step must be nonnegative'); const base = stepMs(tempo); const amount = validateSwing(swing) / 100; return base * (step % 2 === 0 ? 1 + amount : 1 - amount); }
+    BalconyBand.stepIntervalMs = stepIntervalMs;
 })(BalconyBand || (BalconyBand = {}));
 if (typeof module !== 'undefined')
     module.exports = BalconyBand;

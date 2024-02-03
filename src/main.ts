@@ -3,6 +3,7 @@ const song = BalconyBand.emptySong();
 const muted = BalconyBand.emptyMutes();
 const velocities: BalconyBand.VelocityState = { kick: 100, snare: 100, hat: 100 };
 let tempo = 96;
+let swing = 0;
 let running = false;
 let step = 0;
 let timer: number | undefined;
@@ -33,6 +34,8 @@ function changePattern(next: BalconyBand.Song, nextTempo?: number): void { commi
 function restoreHistory(next: BalconyBand.HistoryState, message: string): void { if (next === editHistoryState) return; if (running || starting) stop(); editHistoryState = next; applySnapshot(editHistoryState.present); feedback.textContent = message; draw(); }
 function draw(): void {
   $('tempo-value').textContent = `${tempo} BPM`;
+  $('swing-value').textContent = `${swing}%`;
+  ($('swing') as HTMLInputElement).value = String(swing); ($('swing') as HTMLInputElement).setAttribute('aria-valuenow', String(swing));
   $('transport').textContent = running ? 'Stop groove' : 'Start groove';
   document.querySelectorAll<HTMLButtonElement>('[data-step]').forEach((button) => button.classList.toggle('current', running && Number(button.dataset.step) === step));
   document.querySelectorAll<HTMLButtonElement>('[data-voice][data-step]').forEach((button) => { const on = song[button.dataset.voice as keyof BalconyBand.Song][Number(button.dataset.step)]; button.classList.toggle('on', on); button.setAttribute('aria-pressed', String(on)); });
@@ -68,7 +71,7 @@ function tick(): void {
   if (!audio) return;
   if (nextAudioTime < audio.currentTime - 0.1) nextAudioTime = audio.currentTime + 0.02;
   if (BalconyBand.voiceScheduled(muted, 'kick', velocities.kick) && song.kick[step]) blip('kick', nextAudioTime); if (BalconyBand.voiceScheduled(muted, 'snare', velocities.snare) && song.snare[step]) blip('snare', nextAudioTime); if (BalconyBand.voiceScheduled(muted, 'hat', velocities.hat) && song.hat[step]) blip('hat', nextAudioTime);
-  draw(); step = (step + 1) % BalconyBand.STEP_COUNT; nextAudioTime += BalconyBand.stepMs(tempo) / 1000; timer = window.setTimeout(tick, Math.max(8, (nextAudioTime - audio.currentTime) * 1000));
+  draw(); nextAudioTime += BalconyBand.stepIntervalMs(tempo, step, swing) / 1000; step = (step + 1) % BalconyBand.STEP_COUNT; timer = window.setTimeout(tick, Math.max(8, (nextAudioTime - audio.currentTime) * 1000));
 }
 async function start(): Promise<void> { if (running || starting) return; starting = true; const token = ++generation; try { audio = audio || new AudioContext(); await audio.resume(); if (token !== generation) return; running = true; starting = false; step = 0; nextAudioTime = audio.currentTime + 0.02; feedback.textContent = 'Balcony is live.'; tick(); } catch (_error) { if (token === generation) { starting = false; feedback.textContent = 'Audio could not start. Try again.'; } } }
 function stop(): void { starting = false; generation++; running = false; if (timer !== undefined) window.clearTimeout(timer); timer = undefined; activeNodes.forEach((node) => { try { node.stop(); } catch (_error) { /* already ended */ } }); activeNodes.clear(); if (audio) void audio.suspend(); feedback.textContent = 'Paused. The upstairs neighbour approves.'; draw(); }
@@ -92,6 +95,7 @@ $('clear').addEventListener('click', () => changePattern(BalconyBand.clearSong()
 $('export').addEventListener('click', () => { ($('pattern-json') as HTMLTextAreaElement).value = BalconyBand.exportPattern(song, tempo); feedback.textContent = 'Pattern exported to the box below.'; });
 $('import').addEventListener('click', () => { try { const loaded = BalconyBand.importPattern(($('pattern-json') as HTMLTextAreaElement).value); changePattern(loaded.song, loaded.tempo); feedback.textContent = 'Pattern imported. Press start when ready.'; } catch (error) { feedback.textContent = `Import failed: ${(error as Error).message}`; } });
 $('tempo').addEventListener('input', (event) => { tempo = BalconyBand.validateTempo(Number((event.target as HTMLInputElement).value)); editHistoryState = { ...editHistoryState, present: { ...editHistoryState.present, tempo } }; draw(); });
+$('swing').addEventListener('input', (event) => { swing = BalconyBand.validateSwing(Number((event.target as HTMLInputElement).value)); feedback.textContent = `Swing ${swing}%.`; draw(); });
 function selectedSaveName(): string { return BalconyBand.normalizeSaveName(($('save-name') as HTMLInputElement).value); }
 function selectedSlotName(): string { return ($('save-slot') as HTMLSelectElement).value; }
 $('save').addEventListener('click', () => { try { const name = selectedSaveName(); const slots = readSaves(); if (!slots) return; if (!Object.prototype.hasOwnProperty.call(slots, name) && Object.keys(slots).length >= 10) throw new RangeError('save limit is 10 slots'); slots[name] = BalconyBand.importSave(BalconyBand.exportSave(name, song, tempo)); if (writeSaves(slots)) { ($('save-slot') as HTMLSelectElement).value = name; feedback.textContent = `Saved “${name}”.`; refreshSaves(); ($('save-slot') as HTMLSelectElement).value = name; } } catch (error) { feedback.textContent = `Save failed: ${(error as Error).message}`; } });

@@ -15,6 +15,7 @@ namespace BalconyBand {
   export function validateVelocity(velocity: number): number { if (!Number.isFinite(velocity) || velocity < 0 || velocity > 100) throw new RangeError('velocity must be 0..100'); return Math.round(velocity); }
   export function velocityGain(baseGain: number, velocity: number): number { if (!Number.isFinite(baseGain) || baseGain < 0) throw new RangeError('base gain must be nonnegative'); return baseGain * validateVelocity(velocity) / 100; }
   export function voiceScheduled(muted: MuteState, voice: typeof VOICES[number], velocity: number): boolean { return voiceAudible(muted, voice) && validateVelocity(velocity) > 0; }
+  export function validateSwing(swing: number): number { if (!Number.isFinite(swing) || swing < 0 || swing > 45) throw new RangeError('swing must be 0..45'); return Math.round(swing); }
   function sameSnapshot(left: PatternSnapshot, right: PatternSnapshot): boolean { return left.tempo === right.tempo && VOICES.every((voice) => left.song[voice].every((on, index) => on === right.song[voice][index])); }
   export function createHistory(song: Song, tempo: number): HistoryState { return { past: [], present: { song: cloneSong(song), tempo }, future: [] }; }
   export function editHistory(history: HistoryState, next: PatternSnapshot): HistoryState {
@@ -113,6 +114,7 @@ namespace BalconyBand {
   }
   export function validateTempo(tempo: number): number { if (!Number.isFinite(tempo) || tempo < 60 || tempo > 180) throw new RangeError('tempo must be 60..180'); return Math.round(tempo); }
   export function stepMs(tempo: number): number { return 60000 / validateTempo(tempo) / 2; }
+  export function stepIntervalMs(tempo: number, step: number, swing: number): number { if (!Number.isInteger(step) || step < 0) throw new RangeError('step must be nonnegative'); const base = stepMs(tempo); const amount = validateSwing(swing) / 100; return base * (step % 2 === 0 ? 1 + amount : 1 - amount); }
 }
 declare const module: any;
 if (typeof module !== 'undefined') module.exports = BalconyBand;
