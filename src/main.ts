@@ -17,6 +17,8 @@ const feedback = $('feedback');
 const grid = document.querySelector<HTMLElement>('.grid')!;
 grid.setAttribute('aria-label', 'Sixteen step rhythm grid');
 const labels: Record<keyof BalconyBand.Song, string> = { kick: 'KICK', snare: 'SNARE', hat: 'HAT' };
+const presetSelect = $('preset') as HTMLSelectElement;
+presetSelect.innerHTML = '<option value="">Load preset…</option>' + Object.keys(BalconyBand.PRESETS).map((name) => `<option>${name}</option>`).join('');
 grid.innerHTML = '<div class="corner">VOICE / STEP</div>' + Array.from({ length: BalconyBand.STEP_COUNT }, (_, index) => `<div class="step-head">${index + 1}</div>`).join('') + (Object.keys(labels) as (keyof BalconyBand.Song)[]).map((voice) => `<div class="voice-label"><span>${labels[voice]}</span><span class="voice-actions"><button type="button" class="rotate" data-rotate="left" data-rotate-voice="${voice}" aria-label="Shift ${labels[voice].toLowerCase()} left">←</button><button type="button" class="rotate" data-rotate="right" data-rotate-voice="${voice}" aria-label="Shift ${labels[voice].toLowerCase()} right">→</button><button type="button" class="mute" data-mute="${voice}" aria-label="Mute ${labels[voice].toLowerCase()}" aria-pressed="false">LIVE</button><input class="velocity" data-velocity="${voice}" type="range" min="0" max="100" value="100" aria-label="${labels[voice].toLowerCase()} velocity"><output class="velocity-value" data-velocity-value="${voice}">100%</output></span></div>${Array.from({ length: BalconyBand.STEP_COUNT }, (_, stepIndex) => `<button type="button" role="gridcell" data-voice="${voice}" data-step="${stepIndex}" aria-label="${labels[voice]} step ${stepIndex + 1}" aria-pressed="false" tabindex="-1"></button>`).join('')}`).join('');
 let focusRow = 0;
 let focusColumn = 0;
@@ -90,7 +92,7 @@ document.querySelectorAll<HTMLInputElement>('[data-velocity]').forEach((input) =
 $('undo').addEventListener('click', () => restoreHistory(BalconyBand.undoHistory(editHistoryState), 'Undid pattern edit.'));
 $('redo').addEventListener('click', () => restoreHistory(BalconyBand.redoHistory(editHistoryState), 'Redid pattern edit.'));
 $('transport').addEventListener('click', () => { if (running || starting) stop(); else void start(); });
-$('preset').addEventListener('change', (event) => { const name = (event.target as HTMLSelectElement).value; if (name) { const selected = BalconyBand.preset(name); changePattern(selected.song, selected.tempo); (event.target as HTMLSelectElement).value = ''; } });
+ $('preset').addEventListener('change', (event) => { const name = (event.target as HTMLSelectElement).value; if (name) { const selected = BalconyBand.preset(name); changePattern(selected.song, selected.tempo); feedback.textContent = `${selected.title}: ${selected.note}`; (event.target as HTMLSelectElement).value = ''; } });
 $('clear').addEventListener('click', () => changePattern(BalconyBand.clearSong()));
 $('export').addEventListener('click', () => { ($('pattern-json') as HTMLTextAreaElement).value = BalconyBand.exportPattern(song, tempo); feedback.textContent = 'Pattern exported to the box below.'; });
 $('import').addEventListener('click', () => { try { const loaded = BalconyBand.importPattern(($('pattern-json') as HTMLTextAreaElement).value); changePattern(loaded.song, loaded.tempo); feedback.textContent = 'Pattern imported. Press start when ready.'; } catch (error) { feedback.textContent = `Import failed: ${(error as Error).message}`; } });

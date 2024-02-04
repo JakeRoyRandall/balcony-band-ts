@@ -7,6 +7,7 @@ namespace BalconyBand {
   export type SaveSlot = { schema: 1; name: string; tempo: number; song: Song };
   export type SaveCollection = { schema: 1; slots: Record<string, SaveSlot> };
   export type VelocityState = Record<typeof VOICES[number], number>;
+  export type GroovePreset = { title: string; note: string; tempo: number; song: Song };
   export const STEP_COUNT = 16;
   export const VOICES = ['kick', 'snare', 'hat'] as const;
   export function emptyMutes(): MuteState { return { kick: false, snare: false, hat: false }; }
@@ -32,13 +33,34 @@ namespace BalconyBand {
     const next = history.future[0];
     return { past: [...history.past, { song: cloneSong(history.present.song), tempo: history.present.tempo }].slice(-50), present: { song: cloneSong(next.song), tempo: next.tempo }, future: history.future.slice(1) };
   }
-  export const PRESETS: Record<string, { tempo: number; song: Song }> = {
-    'Quiet Neighbour': { tempo: 72, song: { kick: [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false], snare: Array(STEP_COUNT).fill(false), hat: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false] } },
-    'Saucepan Parade': { tempo: 112, song: { kick: [true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false], snare: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false], hat: Array(STEP_COUNT).fill(true) } },
-    'Last Call Clap': { tempo: 128, song: { kick: [true, false, false, true, true, false, false, false, true, false, false, true, true, false, false, false], snare: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false], hat: [true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false] } }
+  export function loadGrooveLibrary(raw: string): Record<string, GroovePreset> {
+    if (raw.length > 65536) throw new RangeError('groove library is limited to 65536 characters');
+    let data: any; try { data = JSON.parse(raw); } catch (_error) { throw new TypeError('groove library is invalid JSON'); }
+    if (!data || typeof data !== 'object' || Array.isArray(data) || Object.keys(data).sort().join(',') !== 'grooves,schema' || data.schema !== 1 || !Array.isArray(data.grooves) || data.grooves.length < 1 || data.grooves.length > 32) throw new TypeError('groove library schema is invalid');
+    const result: Record<string, GroovePreset> = Object.create(null);
+    for (const item of data.grooves) {
+      if (!item || typeof item !== 'object' || Array.isArray(item) || Object.keys(item).sort().join(',') !== 'note,song,tempo,title' || typeof item.title !== 'string' || item.title.trim().length < 1 || item.title.length > 60 || typeof item.note !== 'string' || item.note.trim().length < 1 || item.note.length > 180) throw new TypeError('groove entry metadata is invalid');
+      const title = item.title.trim(); if (Object.prototype.hasOwnProperty.call(result, title)) throw new TypeError('groove titles must be unique');
+      const loaded = importPattern(JSON.stringify({ schema: 1, tempo: item.tempo, song: item.song }));
+      result[title] = { title, note: item.note.trim(), tempo: loaded.tempo, song: loaded.song };
+    }
+    return result;
+  }
+  export const PRESETS: Record<string, GroovePreset> = {
+    'Quiet Neighbour': { title: 'Quiet Neighbour', note: 'A soft four-corner pulse for late balcony practice.', tempo: 72, song: { kick: [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false], snare: Array(STEP_COUNT).fill(false), hat: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false] } },
+    'Saucepan Parade': { title: 'Saucepan Parade', note: 'Bright straight eighths with a kitchen-counter backbeat.', tempo: 112, song: { kick: [true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false], snare: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false], hat: Array(STEP_COUNT).fill(true) } },
+    'Last Call Clap': { title: 'Last Call Clap', note: 'A clipped late-night stomp with a generous clap.', tempo: 128, song: { kick: [true, false, false, true, true, false, false, false, true, false, false, true, true, false, false, false], snare: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false], hat: [true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false] } }
   };
+  Object.assign(PRESETS, loadGrooveLibrary(`{"schema":1,"grooves":[
+    {"title":"Midnight Halftime","note":"A roomy half-time march with one patient backbeat at the bar midpoint.","tempo":78,"song":{"kick":[true,false,false,false,false,false,false,false,true,false,false,false,false,false,true,false],"snare":[false,false,false,false,false,false,false,false,true,false,false,false,false,false,false,false],"hat":[true,false,false,true,false,false,true,false,true,false,false,true,false,false,true,false]}},
+    {"title":"Shuffle Cart","note":"Uneven hat chatter and a rolling kick for a supermarket aisle strut.","tempo":104,"song":{"kick":[true,false,false,true,false,false,true,false,true,false,false,false,true,false,false,true],"snare":[false,false,false,false,true,false,false,false,false,false,false,false,true,false,false,false],"hat":[false,true,false,true,false,false,true,false,false,true,false,true,false,false,true,false]}},
+    {"title":"Window Clave","note":"A syncopated clave sketch with space around the hand percussion.","tempo":96,"song":{"kick":[true,false,false,true,false,false,true,false,false,true,false,false,true,false,false,false],"snare":[false,false,true,false,false,true,false,false,false,false,true,false,false,false,true,false],"hat":[true,false,true,false,true,false,false,true,true,false,true,false,true,false,false,true]}},
+    {"title":"Three-Three-Two Tea","note":"A clear 3-3-2 grouping across eight eighth-notes, served in a square 4/4 bar.","tempo":90,"song":{"kick":[true,false,false,false,false,false,true,false,false,false,false,false,true,false,false,false],"snare":[false,false,false,false,false,false,false,false,true,false,false,false,false,false,false,false],"hat":[true,false,false,true,false,false,true,false,false,true,false,false,true,false,false,true]}},
+    {"title":"Laundry Disco","note":"A bright four-on-the-floor pattern for sorting socks by moonlight.","tempo":118,"song":{"kick":[true,false,false,false,true,false,false,false,true,false,false,false,true,false,false,false],"snare":[false,false,false,false,true,false,false,false,false,false,false,false,true,false,false,false],"hat":[false,true,false,true,false,true,false,true,false,true,false,true,false,true,false,true]}},
+    {"title":"Quiet Tapping","note":"Sparse fingertip percussion for the hour when every wall is thin.","tempo":66,"song":{"kick":[true,false,false,false,false,false,false,true,false,false,false,false,true,false,false,false],"snare":[false,false,false,false,false,true,false,false,false,false,false,false,false,true,false,false],"hat":[false,false,true,false,false,false,false,false,true,false,false,true,false,false,false,true]}}
+  ]}`));
   export function cloneSong(source: Song): Song { return { kick: [...source.kick], snare: [...source.snare], hat: [...source.hat] }; }
-  export function preset(name: string): { tempo: number; song: Song } { const selected = PRESETS[name]; if (!selected) throw new RangeError('unknown preset'); return { tempo: selected.tempo, song: cloneSong(selected.song) }; }
+  export function preset(name: string): GroovePreset { if (!Object.prototype.hasOwnProperty.call(PRESETS, name)) throw new RangeError('unknown preset'); const selected = PRESETS[name]; return { title: selected.title, note: selected.note, tempo: selected.tempo, song: cloneSong(selected.song) }; }
   export function clearSong(): Song { return emptySong(); }
   export function exportPattern(song: Song, tempo: number): string { return JSON.stringify({ schema: 1, tempo: validateTempo(tempo), song: cloneSong(song) }); }
   export function importPattern(raw: string): { tempo: number; song: Song } {

@@ -43,15 +43,48 @@ var BalconyBand;
         return { past: [...history.past, { song: cloneSong(history.present.song), tempo: history.present.tempo }].slice(-50), present: { song: cloneSong(next.song), tempo: next.tempo }, future: history.future.slice(1) };
     }
     BalconyBand.redoHistory = redoHistory;
+    function loadGrooveLibrary(raw) {
+        if (raw.length > 65536)
+            throw new RangeError('groove library is limited to 65536 characters');
+        let data;
+        try {
+            data = JSON.parse(raw);
+        }
+        catch (_error) {
+            throw new TypeError('groove library is invalid JSON');
+        }
+        if (!data || typeof data !== 'object' || Array.isArray(data) || Object.keys(data).sort().join(',') !== 'grooves,schema' || data.schema !== 1 || !Array.isArray(data.grooves) || data.grooves.length < 1 || data.grooves.length > 32)
+            throw new TypeError('groove library schema is invalid');
+        const result = Object.create(null);
+        for (const item of data.grooves) {
+            if (!item || typeof item !== 'object' || Array.isArray(item) || Object.keys(item).sort().join(',') !== 'note,song,tempo,title' || typeof item.title !== 'string' || item.title.trim().length < 1 || item.title.length > 60 || typeof item.note !== 'string' || item.note.trim().length < 1 || item.note.length > 180)
+                throw new TypeError('groove entry metadata is invalid');
+            const title = item.title.trim();
+            if (Object.prototype.hasOwnProperty.call(result, title))
+                throw new TypeError('groove titles must be unique');
+            const loaded = importPattern(JSON.stringify({ schema: 1, tempo: item.tempo, song: item.song }));
+            result[title] = { title, note: item.note.trim(), tempo: loaded.tempo, song: loaded.song };
+        }
+        return result;
+    }
+    BalconyBand.loadGrooveLibrary = loadGrooveLibrary;
     BalconyBand.PRESETS = {
-        'Quiet Neighbour': { tempo: 72, song: { kick: [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false], snare: Array(BalconyBand.STEP_COUNT).fill(false), hat: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false] } },
-        'Saucepan Parade': { tempo: 112, song: { kick: [true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false], snare: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false], hat: Array(BalconyBand.STEP_COUNT).fill(true) } },
-        'Last Call Clap': { tempo: 128, song: { kick: [true, false, false, true, true, false, false, false, true, false, false, true, true, false, false, false], snare: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false], hat: [true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false] } }
+        'Quiet Neighbour': { title: 'Quiet Neighbour', note: 'A soft four-corner pulse for late balcony practice.', tempo: 72, song: { kick: [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false], snare: Array(BalconyBand.STEP_COUNT).fill(false), hat: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false] } },
+        'Saucepan Parade': { title: 'Saucepan Parade', note: 'Bright straight eighths with a kitchen-counter backbeat.', tempo: 112, song: { kick: [true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false], snare: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false], hat: Array(BalconyBand.STEP_COUNT).fill(true) } },
+        'Last Call Clap': { title: 'Last Call Clap', note: 'A clipped late-night stomp with a generous clap.', tempo: 128, song: { kick: [true, false, false, true, true, false, false, false, true, false, false, true, true, false, false, false], snare: [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false], hat: [true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false] } }
     };
+    Object.assign(BalconyBand.PRESETS, loadGrooveLibrary(`{"schema":1,"grooves":[
+    {"title":"Midnight Halftime","note":"A roomy half-time march with one patient backbeat at the bar midpoint.","tempo":78,"song":{"kick":[true,false,false,false,false,false,false,false,true,false,false,false,false,false,true,false],"snare":[false,false,false,false,false,false,false,false,true,false,false,false,false,false,false,false],"hat":[true,false,false,true,false,false,true,false,true,false,false,true,false,false,true,false]}},
+    {"title":"Shuffle Cart","note":"Uneven hat chatter and a rolling kick for a supermarket aisle strut.","tempo":104,"song":{"kick":[true,false,false,true,false,false,true,false,true,false,false,false,true,false,false,true],"snare":[false,false,false,false,true,false,false,false,false,false,false,false,true,false,false,false],"hat":[false,true,false,true,false,false,true,false,false,true,false,true,false,false,true,false]}},
+    {"title":"Window Clave","note":"A syncopated clave sketch with space around the hand percussion.","tempo":96,"song":{"kick":[true,false,false,true,false,false,true,false,false,true,false,false,true,false,false,false],"snare":[false,false,true,false,false,true,false,false,false,false,true,false,false,false,true,false],"hat":[true,false,true,false,true,false,false,true,true,false,true,false,true,false,false,true]}},
+    {"title":"Three-Three-Two Tea","note":"A clear 3-3-2 grouping across eight eighth-notes, served in a square 4/4 bar.","tempo":90,"song":{"kick":[true,false,false,false,false,false,true,false,false,false,false,false,true,false,false,false],"snare":[false,false,false,false,false,false,false,false,true,false,false,false,false,false,false,false],"hat":[true,false,false,true,false,false,true,false,false,true,false,false,true,false,false,true]}},
+    {"title":"Laundry Disco","note":"A bright four-on-the-floor pattern for sorting socks by moonlight.","tempo":118,"song":{"kick":[true,false,false,false,true,false,false,false,true,false,false,false,true,false,false,false],"snare":[false,false,false,false,true,false,false,false,false,false,false,false,true,false,false,false],"hat":[false,true,false,true,false,true,false,true,false,true,false,true,false,true,false,true]}},
+    {"title":"Quiet Tapping","note":"Sparse fingertip percussion for the hour when every wall is thin.","tempo":66,"song":{"kick":[true,false,false,false,false,false,false,true,false,false,false,false,true,false,false,false],"snare":[false,false,false,false,false,true,false,false,false,false,false,false,false,true,false,false],"hat":[false,false,true,false,false,false,false,false,true,false,false,true,false,false,false,true]}}
+  ]}`));
     function cloneSong(source) { return { kick: [...source.kick], snare: [...source.snare], hat: [...source.hat] }; }
     BalconyBand.cloneSong = cloneSong;
-    function preset(name) { const selected = BalconyBand.PRESETS[name]; if (!selected)
-        throw new RangeError('unknown preset'); return { tempo: selected.tempo, song: cloneSong(selected.song) }; }
+    function preset(name) { if (!Object.prototype.hasOwnProperty.call(BalconyBand.PRESETS, name))
+        throw new RangeError('unknown preset'); const selected = BalconyBand.PRESETS[name]; return { title: selected.title, note: selected.note, tempo: selected.tempo, song: cloneSong(selected.song) }; }
     BalconyBand.preset = preset;
     function clearSong() { return emptySong(); }
     BalconyBand.clearSong = clearSong;
