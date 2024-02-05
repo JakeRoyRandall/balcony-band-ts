@@ -197,6 +197,11 @@ var BalconyBand;
     BalconyBand.rotate = rotate;
     function rotateVoice(song, voice, direction) { return Object.assign(Object.assign({}, song), { [voice]: rotate(song[voice], direction) }); }
     BalconyBand.rotateVoice = rotateVoice;
+    function copyVoice(song, voice) { return [...song[voice]]; }
+    BalconyBand.copyVoice = copyVoice;
+    function pasteVoice(song, voice, pattern) { if (pattern.length !== BalconyBand.STEP_COUNT || pattern.some((value) => typeof value !== 'boolean'))
+        throw new TypeError('copied voice must be sixteen booleans'); return Object.assign(Object.assign({}, song), { [voice]: [...pattern] }); }
+    BalconyBand.pasteVoice = pasteVoice;
     function analyzePattern(pattern) {
         const hits = pattern.filter(Boolean).length;
         const density = pattern.length ? Math.round((hits / pattern.length) * 1000) / 10 : 0;

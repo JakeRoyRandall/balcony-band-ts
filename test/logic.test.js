@@ -30,6 +30,10 @@ assert.deepEqual(band.analyzePattern([false, false, true, false, false, false, f
 const analysisSong = {kick: [true, false].concat(Array(14).fill(false)), snare: [true, false].concat(Array(14).fill(false)), hat: Array(16).fill(false)};
 const analysisBefore = JSON.stringify(analysisSong); const songReport = band.analyzeSong(analysisSong);
 assert.equal(songReport.sharedSteps, 1); assert.equal(songReport.voices.kick.hits, 1); assert.equal(JSON.stringify(analysisSong), analysisBefore);
+const copied = band.copyVoice(rotationSource, 'kick'); const copiedBefore = JSON.stringify(copied);
+const pastedSong = band.pasteVoice(rotationSource, 'snare', copied); assert.deepEqual(pastedSong.snare, rotationSource.kick); assert.deepEqual(pastedSong.kick, rotationSource.kick); assert.equal(JSON.stringify(copied), copiedBefore);
+copied[0] = false; assert.equal(pastedSong.snare[0], true);
+assert.throws(() => band.pasteVoice(rotationSource, 'hat', [true]), /sixteen booleans/);
 let history = band.createHistory(song, 96);
 history = band.editHistory(history, {song: band.toggle(song, 'kick', 0), tempo: 96});
 assert.equal(history.past.length, 1); assert.equal(history.present.song.kick[0], true);
