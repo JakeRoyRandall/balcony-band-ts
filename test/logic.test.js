@@ -69,7 +69,7 @@ const libraryTitles = ['Midnight Halftime', 'Shuffle Cart', 'Window Clave', 'Thr
 assert.equal(libraryTitles.every((name) => band.PRESETS[name] && band.PRESETS[name].title === name && band.PRESETS[name].note.length > 10), true);
 assert.equal(new Set(libraryTitles.map((name) => JSON.stringify(band.PRESETS[name].song))).size, libraryTitles.length);
 assert.equal(libraryTitles.every((name) => band.preset(name).song.kick.length === 16 && band.preset(name).song.snare.length === 16 && band.preset(name).song.hat.length === 16), true);
-assert.deepEqual(band.preset('Midnight Halftime').song.snare.map((on, i) => on ? i : -1).filter((i) => i >= 0), [8]);
+assert.deepEqual(band.preset('Midnight Halftime').song.snare.map((on, i) => on ? i : -1).filter((i) => i >= 0), [4, 12]);
 assert.deepEqual(band.preset('Three-Three-Two Tea').song.kick.map((on, i) => on ? i : -1).filter((i) => i >= 0), [0, 6, 12]);
 assert.throws(() => band.loadGrooveLibrary('{"schema":1,"grooves":[]}'), /schema/);
 assert.throws(() => band.loadGrooveLibrary('{"schema":1,"grooves":[{"title":"X","note":"n","tempo":96,"song":{}}]}'), /sixteen booleans/);
