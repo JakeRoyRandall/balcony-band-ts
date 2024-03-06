@@ -22,6 +22,7 @@ namespace BalconyBand {
   export function validateCountInBars(bars: number): number { if (!Number.isInteger(bars) || bars < 0 || bars > 2) throw new RangeError('count-in must be 0..2 bars'); return bars; }
   export function countInBeats(bars: number): number { return validateCountInBars(bars) * 4; }
   export function countInIntervalMs(tempo: number): number { return stepMs(tempo) * 2; }
+  export function metronomeBeat(step: number): { quarter: boolean; barStart: boolean } { if (!Number.isInteger(step) || step < 0 || step >= STEP_COUNT) throw new RangeError('metronome step must be 0..15'); return { quarter: step % 2 === 0, barStart: step === 0 || step === 8 }; }
   export function advanceCountIn(remainingBeats: number): { remainingBeats: number; complete: boolean } { if (!Number.isInteger(remainingBeats) || remainingBeats < 0) throw new RangeError('remaining count-in beats must be nonnegative'); const remaining = Math.max(0, remainingBeats - 1); return { remainingBeats: remaining, complete: remaining === 0 }; }
   function sameSnapshot(left: PatternSnapshot, right: PatternSnapshot): boolean { return left.tempo === right.tempo && VOICES.every((voice) => left.song[voice].every((on, index) => on === right.song[voice][index])); }
   export function createHistory(song: Song, tempo: number): HistoryState { return { past: [], present: { song: cloneSong(song), tempo }, future: [] }; }

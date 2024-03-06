@@ -27,6 +27,9 @@ var BalconyBand;
     BalconyBand.countInBeats = countInBeats;
     function countInIntervalMs(tempo) { return stepMs(tempo) * 2; }
     BalconyBand.countInIntervalMs = countInIntervalMs;
+    function metronomeBeat(step) { if (!Number.isInteger(step) || step < 0 || step >= BalconyBand.STEP_COUNT)
+        throw new RangeError('metronome step must be 0..15'); return { quarter: step % 2 === 0, barStart: step === 0 || step === 8 }; }
+    BalconyBand.metronomeBeat = metronomeBeat;
     function advanceCountIn(remainingBeats) { if (!Number.isInteger(remainingBeats) || remainingBeats < 0)
         throw new RangeError('remaining count-in beats must be nonnegative'); const remaining = Math.max(0, remainingBeats - 1); return { remainingBeats: remaining, complete: remaining === 0 }; }
     BalconyBand.advanceCountIn = advanceCountIn;

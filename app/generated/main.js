@@ -5,6 +5,7 @@ const muted = BalconyBand.emptyMutes();
 const velocities = { kick: 100, snare: 100, hat: 100 };
 let tempo = 96;
 let swing = 0;
+let metronomeEnabled = false;
 let countInBars = 0;
 let countingIn = false;
 let countInRemaining = 0;
@@ -39,6 +40,13 @@ const patternTools = document.createElement('div');
 patternTools.className = 'pattern-tools';
 patternTools.innerHTML = '<textarea id="pattern-json" aria-label="Pattern JSON" rows="3" placeholder="Pattern JSON lives here"></textarea><button id="export" class="transport">Export JSON</button><button id="import" class="transport">Import JSON</button><button id="download" class="transport">Download JSON</button><label class="file-upload" for="upload"><span>Upload JSON</span><input id="upload" type="file" accept="application/json,.json" aria-label="Upload pattern JSON"></label><button id="undo" class="transport" disabled>Undo</button><button id="redo" class="transport" disabled>Redo</button><div class="euclidean-tools"><label for="euclidean-voice">EUCLIDEAN</label><select id="euclidean-voice" aria-label="Euclidean voice"><option value="kick">Kick</option><option value="snare">Snare</option><option value="hat">Hat</option></select><label for="euclidean-pulses">PULSES</label><input id="euclidean-pulses" type="number" min="0" max="16" value="3" required aria-label="Euclidean pulses"><label for="euclidean-rotation">ROTATION</label><input id="euclidean-rotation" type="number" min="0" max="15" value="0" required aria-label="Euclidean rotation"><button id="euclidean-generate" class="transport">Generate</button></div><div class="save-tools"><label for="save-name">SAVE NAME</label><input id="save-name" maxlength="40" placeholder="e.g. Tuesday kitchen" aria-label="Save name"><button id="save" class="transport">Save</button><select id="save-slot" aria-label="Saved pattern"><option value="">Choose saved pattern…</option></select><button id="load" class="transport">Load</button><button id="delete-save" class="transport">Delete</button></div>';
 feedback.parentElement.insertBefore(patternTools, feedback);
+const metronomeButton = document.createElement('button');
+metronomeButton.id = 'metronome';
+metronomeButton.className = 'transport';
+metronomeButton.type = 'button';
+metronomeButton.setAttribute('aria-pressed', 'false');
+metronomeButton.textContent = 'Metronome off';
+document.querySelector('.console-top').appendChild(metronomeButton);
 const copyTools = document.createElement('div');
 copyTools.className = 'copy-tools';
 copyTools.innerHTML = '<label for="copy-source">COPY VOICE</label><select id="copy-source" aria-label="Copy source voice"><option value="kick">Kick</option><option value="snare">Snare</option><option value="hat">Hat</option></select><button id="copy" class="transport">Copy</button><span id="copied-label">Pattern clipboard: empty</span><label for="paste-target">PASTE TO</label><select id="paste-target" aria-label="Paste target voice"><option value="kick">Kick</option><option value="snare">Snare</option><option value="hat">Hat</option></select><button id="paste" class="transport" disabled>Paste</button><label for="transform-voice">EDIT VOICE</label><select id="transform-voice" aria-label="Edit target voice"><option value="kick">Kick</option><option value="snare">Snare</option><option value="hat">Hat</option></select><button id="invert" class="transport">Invert</button><button id="reverse" class="transport">Reverse</button></div>';
@@ -64,6 +72,9 @@ function restoreHistory(next, message) { if (next === editHistoryState)
 function draw() {
     $('tempo-value').textContent = `${tempo} BPM`;
     $('swing-value').textContent = `${swing}%`;
+    const metronomeButton = $('metronome');
+    metronomeButton.textContent = metronomeEnabled ? 'Metronome on' : 'Metronome off';
+    metronomeButton.setAttribute('aria-pressed', String(metronomeEnabled));
     $('swing').value = String(swing);
     $('swing').setAttribute('aria-valuenow', String(swing));
     $('transport').textContent = countingIn ? 'Stop count-in' : (running ? 'Stop groove' : 'Start groove');
@@ -150,6 +161,8 @@ function blip(kind, at) {
 }
 function countClick(at) { if (!audio)
     return; const oscillator = audio.createOscillator(); const gain = audio.createGain(); oscillator.frequency.value = 880; gain.gain.setValueAtTime(0.0001, at); gain.gain.exponentialRampToValueAtTime(0.025, at + 0.003); gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.06); oscillator.connect(gain).connect(audio.destination); track(oscillator); oscillator.start(at); oscillator.stop(at + 0.07); }
+function metronomeClick(at, barStart) { if (!audio)
+    return; const oscillator = audio.createOscillator(); const gain = audio.createGain(); oscillator.frequency.value = barStart ? 1320 : 990; gain.gain.setValueAtTime(0.0001, at); gain.gain.exponentialRampToValueAtTime(barStart ? 0.045 : 0.028, at + 0.002); gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.055); oscillator.connect(gain).connect(audio.destination); track(oscillator); oscillator.start(at); oscillator.stop(at + 0.065); }
 function tick() {
     if (!running)
         return;
@@ -175,6 +188,9 @@ function tick() {
         timer = window.setTimeout(tick, Math.max(8, (nextAudioTime - audio.currentTime) * 1000));
         return;
     }
+    const beat = BalconyBand.metronomeBeat(step);
+    if (metronomeEnabled && beat.quarter)
+        metronomeClick(nextAudioTime, beat.barStart);
     if (BalconyBand.voiceScheduled(muted, 'kick', velocities.kick) && song.kick[step])
         blip('kick', nextAudioTime);
     if (BalconyBand.voiceScheduled(muted, 'snare', velocities.snare) && song.snare[step])
@@ -285,6 +301,7 @@ finally {
 } });
 $('tempo').addEventListener('input', (event) => { tempo = BalconyBand.validateTempo(Number(event.target.value)); editHistoryState = Object.assign(Object.assign({}, editHistoryState), { present: Object.assign(Object.assign({}, editHistoryState.present), { tempo }) }); draw(); });
 $('swing').addEventListener('input', (event) => { swing = BalconyBand.validateSwing(Number(event.target.value)); feedback.textContent = `Swing ${swing}%.`; draw(); });
+$('metronome').addEventListener('click', () => { metronomeEnabled = !metronomeEnabled; feedback.textContent = metronomeEnabled ? 'Metronome on: quarter-note balcony time.' : 'Metronome off.'; draw(); });
 $('euclidean-generate').addEventListener('click', () => { try {
     const voice = $('euclidean-voice').value;
     const pulses = $('euclidean-pulses').valueAsNumber;
