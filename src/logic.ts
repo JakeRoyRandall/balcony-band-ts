@@ -13,6 +13,7 @@ namespace BalconyBand {
   export const STEP_COUNT = 16;
   export const VOICES = ['kick', 'snare', 'hat'] as const;
   export function emptyMutes(): MuteState { return { kick: false, snare: false, hat: false }; }
+  export function defaultMixerSettings(): { swing: number; countInBars: number; metronome: boolean; muted: MuteState; velocities: VelocityState } { return { swing: 0, countInBars: 0, metronome: false, muted: emptyMutes(), velocities: { kick: 100, snare: 100, hat: 100 } }; }
   export function toggleMute(muted: MuteState, voice: typeof VOICES[number]): MuteState { return { ...muted, [voice]: !muted[voice] }; }
   export function voiceAudible(muted: MuteState, voice: typeof VOICES[number]): boolean { return !muted[voice]; }
   export function validateVelocity(velocity: number): number { if (!Number.isFinite(velocity) || velocity < 0 || velocity > 100) throw new RangeError('velocity must be 0..100'); return Math.round(velocity); }

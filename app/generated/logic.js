@@ -5,6 +5,8 @@ var BalconyBand;
     BalconyBand.VOICES = ['kick', 'snare', 'hat'];
     function emptyMutes() { return { kick: false, snare: false, hat: false }; }
     BalconyBand.emptyMutes = emptyMutes;
+    function defaultMixerSettings() { return { swing: 0, countInBars: 0, metronome: false, muted: emptyMutes(), velocities: { kick: 100, snare: 100, hat: 100 } }; }
+    BalconyBand.defaultMixerSettings = defaultMixerSettings;
     function toggleMute(muted, voice) { return Object.assign(Object.assign({}, muted), { [voice]: !muted[voice] }); }
     BalconyBand.toggleMute = toggleMute;
     function voiceAudible(muted, voice) { return !muted[voice]; }

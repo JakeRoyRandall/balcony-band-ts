@@ -55,6 +55,13 @@ tapButton.type = 'button';
 tapButton.textContent = 'Tap tempo';
 tapButton.setAttribute('aria-label', 'Tap tempo twice or more to set BPM');
 document.querySelector('.console-top').appendChild(tapButton);
+const resetMixerButton = document.createElement('button');
+resetMixerButton.id = 'reset-mixer';
+resetMixerButton.className = 'transport';
+resetMixerButton.type = 'button';
+resetMixerButton.textContent = 'Reset mixer';
+resetMixerButton.setAttribute('aria-label', 'Reset mixer settings without changing pattern');
+document.querySelector('.console-top').appendChild(resetMixerButton);
 const copyTools = document.createElement('div');
 copyTools.className = 'copy-tools';
 copyTools.innerHTML = '<label for="copy-source">COPY VOICE</label><select id="copy-source" aria-label="Copy source voice"><option value="kick">Kick</option><option value="snare">Snare</option><option value="hat">Hat</option></select><button id="copy" class="transport">Copy</button><span id="copied-label">Pattern clipboard: empty</span><label for="paste-target">PASTE TO</label><select id="paste-target" aria-label="Paste target voice"><option value="kick">Kick</option><option value="snare">Snare</option><option value="hat">Hat</option></select><button id="paste" class="transport" disabled>Paste</button><label for="transform-voice">EDIT VOICE</label><select id="transform-voice" aria-label="Edit target voice"><option value="kick">Kick</option><option value="snare">Snare</option><option value="hat">Hat</option></select><button id="invert" class="transport">Invert</button><button id="reverse" class="transport">Reverse</button></div>';
@@ -316,6 +323,8 @@ $('tap-tempo').addEventListener('click', () => { const tapped = BalconyBand.tapT
     feedback.textContent = 'Tap tempo: tap once more to set the groove.';
     return;
 } tempo = tapped.bpm; editHistoryState = Object.assign(Object.assign({}, editHistoryState), { present: Object.assign(Object.assign({}, editHistoryState.present), { tempo }) }); feedback.textContent = `Tap tempo set to ${tempo} BPM.`; draw(); });
+$('reset-mixer').addEventListener('click', () => { if (running || starting)
+    stop(); const defaults = BalconyBand.defaultMixerSettings(); Object.assign(muted, defaults.muted); Object.assign(velocities, defaults.velocities); swing = defaults.swing; countInBars = defaults.countInBars; metronomeEnabled = defaults.metronome; $('count-in').value = String(countInBars); feedback.textContent = 'Mixer reset. Pattern, tempo, and saved arrangements are unchanged.'; draw(); });
 $('euclidean-generate').addEventListener('click', () => { try {
     const voice = $('euclidean-voice').value;
     const pulses = $('euclidean-pulses').valueAsNumber;
